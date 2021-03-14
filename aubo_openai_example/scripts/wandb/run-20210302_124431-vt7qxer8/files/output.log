@@ -1,0 +1,91 @@
+Start Agent init....
+[ERROR] [1614685472.981213, 26.049000]: WORLD RESET
+[ERROR] [1614685472.993065, 26.060000]: NOT Initialising Simulation Physics Parameters
+[WARN] [1614685472.993723, 26.061000]: PAUSING START
+[WARN] [1614685473.000283, 26.068000]: PAUSING FINISH
+[WARN] [1614685473.000625, 26.068000]: Start Init ControllersConnection
+[WARN] [1614685473.001164, 26.068000]: END Init ControllersConnection
+[INFO] [1614685473.009655, 26.068000]: Entered Push Env
+[WARN] [1614685473.016895, 26.068000]: UNPAUSING START
+[WARN] [1614685473.024504, 26.068000]: UNPAUSING FiNISH
+/home/jin/.local/lib/python2.7/site-packages/gym/logger.py:30: UserWarning: [33mWARN: Box bound precision lowered by casting to float32[0m
+  warnings.warn(colorize('%s: %s'%('WARN', msg % args), 'yellow'))
+[WARN] [1614685473.027445, 26.068000]: UNPAUSING START
+[WARN] [1614685473.036349, 26.075000]: UNPAUSING FiNISH
+START Actor init
+WARNING:tensorflow:From /home/jin/.local/lib/python2.7/site-packages/tensorflow/python/ops/init_ops.py:1251: calling __init__ (from tensorflow.python.ops.init_ops) with dtype is deprecated and will be removed in a future version.
+Instructions for updating:
+Call initializer instance with the dtype argument instead of passing it to the constructor
+END Actor init....
+NUMBER OF WORKERS=CPUs available for this training=1
+END Agent init....
+[ERROR] [1614685473.810002, 26.767000]: WORLD RESET
+[ERROR] [1614685473.819088, 26.775000]: NOT Initialising Simulation Physics Parameters
+[WARN] [1614685473.819964, 26.776000]: PAUSING START
+[WARN] [1614685473.826531, 26.782000]: PAUSING FINISH
+[WARN] [1614685473.827269, 26.782000]: Start Init ControllersConnection
+[WARN] [1614685473.829300, 26.782000]: END Init ControllersConnection
+[INFO] [1614685473.831597, 26.782000]: Entered Push Env
+[WARN] [1614685473.835499, 26.782000]: UNPAUSING START
+[WARN] [1614685473.840394, 26.782000]: UNPAUSING FiNISH
+[WARN] [1614685473.844663, 26.787000]: UNPAUSING START
+[WARN] [1614685473.849743, 26.792000]: UNPAUSING FiNISH
+Start Worker Agent init....
+START Actor init
+END Actor init....
+2021-03-02 12:44:34.418666: I tensorflow/core/platform/cpu_feature_guard.cc:142] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA
+2021-03-02 12:44:34.468395: I tensorflow/core/platform/profile_utils/cpu_utils.cc:94] CPU Frequency: 1800000000 Hz
+2021-03-02 12:44:34.469032: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x740d010 executing computations on platform Host. Devices:
+2021-03-02 12:44:34.469066: I tensorflow/compiler/xla/service/service.cc:175]   StreamExecutor device (0): <undefined>, <undefined>
+2021-03-02 12:44:34.638653: W tensorflow/compiler/jit/mark_for_compilation_pass.cc:1412] (One-time warning): Not using XLA:CPU for cluster because envvar TF_XLA_FLAGS=--tf_xla_cpu_global_jit was not set.  If you want XLA:CPU, either set that envvar, or use experimental_jit_scope to enable XLA:CPU.  To confirm that XLA is active, pass --vmodule=xla_compilation_cache=1 (as a proper command-line flag, not via TF_XLA_FLAGS) or set the envvar XLA_FLAGS=--xla_hlo_profile.
+END Worker Agent init....
+####################### START Train
+####################### START AC3
+EP0 EpisodeReward=0
+[WARN] [1614685475.117298, 27.877000]: UNPAUSING START
+[WARN] [1614685475.126111, 27.885000]: UNPAUSING FiNISH
+[WARN] [1614685475.149501, 27.906000]: UNPAUSING START
+[WARN] [1614685475.160744, 27.915000]: UNPAUSING FiNISH
+[WARN] [1614685477.484886, 30.017000]: PAUSING START
+[WARN] [1614685477.490015, 30.022000]: PAUSING FINISH
+[ERROR] [1614685477.490785, 30.022000]: WORLD RESET
+[WARN] [1614685477.494576, 30.022000]: UNPAUSING START
+[WARN] [1614685477.501178, 30.022000]: UNPAUSING FiNISH
+[WARN] [1614685477.514191, 30.031000]: PAUSING START
+[WARN] [1614685477.525320, 30.038000]: PAUSING FINISH
+[WARN] [1614685477.527304, 30.040000]: UNPAUSING START
+[WARN] [1614685477.533652, 30.040000]: UNPAUSING FiNISH
+Exception in thread Thread-29:
+Traceback (most recent call last):
+  File "/usr/lib/python2.7/threading.py", line 801, in __bootstrap_inner
+    self.run()
+  File "train_a3c_continous_aubo.py", line 257, in run
+    self.train()
+  File "train_a3c_continous_aubo.py", line 206, in train
+    action = self.actor.get_action(state)
+  File "train_a3c_continous_aubo.py", line 54, in get_action
+    mu, std = self.model.predict(state)
+  File "/home/jin/.local/lib/python2.7/site-packages/tensorflow/python/keras/engine/training.py", line 1078, in predict
+    callbacks=callbacks)
+  File "/home/jin/.local/lib/python2.7/site-packages/tensorflow/python/keras/engine/training_arrays.py", line 157, in model_iteration
+    f = _make_execution_function(model, mode)
+  File "/home/jin/.local/lib/python2.7/site-packages/tensorflow/python/keras/engine/training_arrays.py", line 532, in _make_execution_function
+    return model._make_execution_function(mode)
+  File "/home/jin/.local/lib/python2.7/site-packages/tensorflow/python/keras/engine/training.py", line 2282, in _make_execution_function
+    self._make_predict_function()
+  File "/home/jin/.local/lib/python2.7/site-packages/tensorflow/python/keras/engine/training.py", line 2272, in _make_predict_function
+    **kwargs)
+  File "/home/jin/.local/lib/python2.7/site-packages/tensorflow/python/keras/backend.py", line 3479, in function
+    return GraphExecutionFunction(inputs, outputs, updates=updates, **kwargs)
+  File "/home/jin/.local/lib/python2.7/site-packages/tensorflow/python/keras/backend.py", line 3142, in __init__
+    with ops.control_dependencies([self.outputs[0]]):
+  File "/home/jin/.local/lib/python2.7/site-packages/tensorflow/python/framework/ops.py", line 5426, in control_dependencies
+    return get_default_graph().control_dependencies(control_inputs)
+  File "/home/jin/.local/lib/python2.7/site-packages/tensorflow/python/framework/ops.py", line 4867, in control_dependencies
+    c = self.as_graph_element(c)
+  File "/home/jin/.local/lib/python2.7/site-packages/tensorflow/python/framework/ops.py", line 3796, in as_graph_element
+    return self._as_graph_element_locked(obj, allow_tensor, allow_operation)
+  File "/home/jin/.local/lib/python2.7/site-packages/tensorflow/python/framework/ops.py", line 3875, in _as_graph_element_locked
+    raise ValueError("Tensor %s is not an element of this graph." % obj)
+ValueError: Tensor Tensor("lambda_1/mul:0", shape=(?, 6), dtype=float64) is not an element of this graph.
+

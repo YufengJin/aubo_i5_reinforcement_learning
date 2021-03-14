@@ -1,0 +1,22 @@
+{
+    "username": "jin", 
+    "executable": "/usr/bin/python", 
+    "args": [], 
+    "python": "2.7.12", 
+    "root": "/home/jin/Desktop/aubo_openai_ws/src", 
+    "cpu_count": 8, 
+    "heartbeatAt": "2021-03-02T11:44:32.361515", 
+    "host": "jin-t480", 
+    "email": "jyf931118@gmail.com", 
+    "state": "running", 
+    "program": "train_a3c_continous_aubo.py", 
+    "cuda": null, 
+    "git": {
+        "commit": "dd9e0cc12947ab684cf0e2c62714381fd41e1791", 
+        "remote": "git@github.com:YufengJin/aubo_robot_openai.git"
+    }, 
+    "startedAt": "2021-03-02T11:44:31.849415", 
+    "docker": null, 
+    "os": "Linux-4.15.0-118-generic-x86_64-with-Ubuntu-16.04-xenial", 
+    "codePath": "aubo_openai_example/scripts/train_a3c_continous_aubo.py"
+}

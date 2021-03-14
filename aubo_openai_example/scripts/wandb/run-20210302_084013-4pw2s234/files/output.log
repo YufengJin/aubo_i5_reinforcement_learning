@@ -1,0 +1,23 @@
+Start Agent init....
+/home/jin/.local/lib/python2.7/site-packages/gym/envs/registration.py:17: PkgResourcesDeprecationWarning: Parameters to load are deprecated.  Call .resolve and .require separately.
+  result = entry_point.load(False)
+Traceback (most recent call last):
+  File "train_a3c_continous_aubo.py", line 268, in <module>
+    main()
+  File "train_a3c_continous_aubo.py", line 263, in main
+    agent = Agent(env_name)
+  File "train_a3c_continous_aubo.py", line 115, in __init__
+    env = gym.make(env_name)
+  File "/home/jin/.local/lib/python2.7/site-packages/gym/envs/registration.py", line 161, in make
+    return registry.make(id)
+  File "/home/jin/.local/lib/python2.7/site-packages/gym/envs/registration.py", line 119, in make
+    env = spec.make()
+  File "/home/jin/.local/lib/python2.7/site-packages/gym/envs/registration.py", line 86, in make
+    env = cls(**self._kwargs)
+  File "/home/jin/Desktop/aubo_openai_ws/src/aubo_openai_example/scripts/aubo_env.py", line 55, in __init__
+    self.aubo_commander = AuboCommand()
+  File "/home/jin/Desktop/aubo_openai_ws/src/aubo_openai_example/scripts/aubo_command.py", line 13, in __init__
+    rospy.init_node('send_control_command')
+  File "/opt/ros/kinetic/lib/python2.7/dist-packages/rospy/client.py", line 274, in init_node
+    raise rospy.exceptions.ROSException("rospy.init_node() has already been called with different arguments: "+str(_init_node_args))
+ROSException: rospy.init_node() has already been called with different arguments: ('train_aubo_her', ['train_a3c_continous_aubo.py'], False, None, False, False)

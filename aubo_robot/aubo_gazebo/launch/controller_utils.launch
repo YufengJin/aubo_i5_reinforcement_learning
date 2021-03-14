@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<launch>
+
+
+  <!-- Fake Calibration -->
+  <node pkg="rostopic" type="rostopic" name="fake_joint_calibration"
+        args="pub /calibrated std_msgs/Bool true" />
+  
+  <!-- load configuration to rosparam -->
+  <rosparam file="$(find aubo_gazebo)/config/joint_state_controller.yaml" command="load"/>    
+
+
+  <!-- load arm configuration -->
+  <rosparam file="$(find aubo_gazebo)/config/arm_controller.yaml" command="load"/>  
+
+  <node name="joint_state_controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="joint_state_controller"/>
+
+  <param name="arm_controller/allow_partial_joints_goal" value="true"/>
+
+  <!-- spawn controller manager for gripper and arm -->
+   <node name="arm_controller_spawner" pkg="controller_manager" type="controller_manager" args="spawn arm_controller" respawn="false" output="screen"/>
+  
+  <!-- load gripper configuration -->
+  <rosparam command="load" file="$(find aubo_gazebo)/config/gripper_controller.yaml" />
+
+  <node name="gripper_controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen"  args="--shutdown-timeout=1.0 --timeout=360.0 gripper_controller" />
+
+
+  <!-- Robot state publisher -->
+  <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+    <param name="publish_frequency" type="double" value="50.0" />
+    <param name="tf_prefix" type="string" value="" />
+  </node>
+
+</launch>

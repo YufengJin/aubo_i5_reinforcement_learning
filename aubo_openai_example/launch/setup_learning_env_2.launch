@@ -1,0 +1,7 @@
+<launch>
+    <!-- Launch the training system -->
+    <node pkg="my_sawyer_openai_example" name="setup_pick_cube_env" type="setup_learning_env.py" output="screen"/>
+
+    <node pkg="rviz" name="rviz" type="rviz" args="-d $(find my_sawyer_openai_example)/rviz/sawyer_block_tf.rviz"/>
+
+</launch>

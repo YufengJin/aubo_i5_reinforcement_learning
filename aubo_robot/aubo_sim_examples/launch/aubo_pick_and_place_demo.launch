@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+
+  <!-- We resume the logic in empty_world.launch, changing the name of the world to be launched -->
+  <include file="$(find aubo_gazebo)/launch/aubo_i5_world.launch" />
+
+
+  <!-- Start the Sawyer pick and place demo -->
+  <node pkg="aubo_sim_examples" type="ik_pick_and_place_demo.py" name="ik_pick_and_place_demo" />
+
+</launch>
