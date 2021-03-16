@@ -6,6 +6,7 @@ import geometry_msgs.msg
 from std_msgs.msg import Float64
 from sensor_msgs.msg import JointState, Image
 from nav_msgs.msg import Odometry
+from geometry_msgs.msg import PoseStamped
 from aubo_moveit_config.aubo_commander import AuboCommander
 from openai_ros import robot_gazebo_env
 
@@ -47,6 +48,8 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         self.controllers_list = []
 
         self.aubo_commander = AuboCommander()
+
+        self.setup_planning_scene()
         # It doesnt use namespace
         self.robot_name_space = ""
 
@@ -56,7 +59,17 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
 	                                    reset_controls=False,
 	                                    start_init_physics_parameters=False,
 	                                    reset_world_or_sim="WORLD")
+    def setup_planning_scene(self):
+        # add table mesh in scene planning, avoiding to collosion
+        rospy.sleep(2)
 
+        p = PoseStamped()
+        p.header.frame_id = self.aubo_commander.robot.get_planning_frame()
+        p.pose.position.x = 0.75
+        p.pose.position.y = 0.
+        p.pose.position.z = 0.386
+
+        self.aubo_commander.scene.add_box("table",p,(0.91,0.91,0.77))
 
         # get joint_
     def joints_callback(self, data):

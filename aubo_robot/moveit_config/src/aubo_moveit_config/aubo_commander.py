@@ -42,9 +42,9 @@ class AuboCommander(object):
         
         self.robot = moveit_commander.RobotCommander()
         self.scene = moveit_commander.PlanningSceneInterface()
-        print("###### Setting Group Moveit with 30 seconds wait...")
+        print("Setting Group Moveit, wait...")
+
         self.arm_group = moveit_commander.MoveGroupCommander("arm")
-        #self.arm_group.set_end_effector_link()
         self.gripper_group = moveit_commander.MoveGroupCommander("gripper")
 
 
@@ -155,13 +155,12 @@ class AuboCommander(object):
 #     traj_serv_object = AuboCommander()
 
 #     print("Initializing the joint states....")
-#     print(traj_serv_object.move_joints_traj([0.0, 0.0, 1.53, 0.0, 1.53, 0.0]))
+#     print(traj_serv_object.move_joints_traj([0.0, 0.0, 0.6, 0.0, 1.53, 0.0]))
 #     pose_goal = traj_serv_object.get_ee_pose()
 #     print(pose_goal)
  
-#     pose_goal.position.x += 0.1
-#     pose_goal.position.y = 0
-#     pose_goal.position.z += 0.2
+
+#     pose_goal.position.z = 1
 #     pose_goal.orientation.x = 0
 #     pose_goal.orientation.y = 1
 #     pose_goal.orientation.z = 0
