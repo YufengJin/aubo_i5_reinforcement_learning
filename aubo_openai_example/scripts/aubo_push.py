@@ -34,11 +34,13 @@ class AuboPushEnv(aubo_env.AuboEnv):
 
         self.gazebo.unpauseSim()
 
-        # self.action_space = spaces.Discrete(self.n_actions)
-        joint_low = np.array([self.shoulder_min, self.upperArm_min, self.foreArm_min, self.wrist_joints_min, self.wrist_joints_min, self.wrist_joints_min])
-        joint_high = np.array([self.shoulder_max, self.upperArm_max, self.foreArm_max, self.wrist_joints_max, self.wrist_joints_max, self.wrist_joints_max])
-        
-        self.action_space = spaces.Box(joint_low, joint_high)
+      # self.action_space = spaces.Discrete(self.n_actions)
+        self.action_space = spaces.Box(
+            low=self.position_joints_min,
+            high=self.position_joints_max, shape=(self.n_actions,),
+            dtype=np.float32
+        )
+
         # distance between ee and block
         observations_high_dist = np.array([self.max_distance])
         observations_low_dist = np.array([0.0])
@@ -65,14 +67,9 @@ class AuboPushEnv(aubo_env.AuboEnv):
 
         """
         # set limits for joint
-        self.foreArm_max = 1.53
-        self.foreArm_min = 0
-        self.shoulder_max = 0.24
-        self.shoulder_min = - 0.24
-        self.upperArm_max = 0.3
-        self.upperArm_min = -0.55
-        self.wrist_joints_max = 2.16
-        self.wrist_joints_min = -2.16
+        self.position_joints_max = 2.16
+        self.position_joints_min = 2.16
+
 
         self.sim_time = rospy.get_time()
         self.n_actions = 6
@@ -86,7 +83,8 @@ class AuboPushEnv(aubo_env.AuboEnv):
                             "foreArm_joint": 0.6,
                             "wrist1_joint": 0.0,
                             "wrist2_joint": 1.53,
-                            "wrist3_joint": 0.0}
+                            "wrist3_joint": 0.0,
+                            "gripper":0.8}
         """
         self.setup_ee_pos = {"x": 0.598,
                             "y": 0.005,
@@ -102,7 +100,7 @@ class AuboPushEnv(aubo_env.AuboEnv):
         self.max_distance = 3.0
         self.max_speed = 1.0
         # 1.5 aubo can reach highest height
-        self.ee_z_max = 1.50
+        self.ee_z_max = 1.2
         # the height of table 
         self.ee_z_min = 0.7725
 
@@ -114,7 +112,7 @@ class AuboPushEnv(aubo_env.AuboEnv):
         The Simulation will be unpaused for this purpose.
         """
         self.gazebo.unpauseSim()
-        if not self.set_trajectory_joints(self.init_pos):
+        if not (self.set_trajectory_joints(self.init_pos) and self.set_ee(self.init_pos["gripper"])):
             assert False, "Initialisation is failed...."
 
     def _init_env_variables(self):
@@ -146,9 +144,10 @@ class AuboPushEnv(aubo_env.AuboEnv):
         """
         self.gazebo.unpauseSim()
 
-        (grip_trans, grip_rot) = self.get_ee_pose()
+        (grip_trans, grip_rot) = self.get_tf("world", "robotiq_gripper_center")
         # ee postion in np array
-        ee_array_pose = np.array([grip_trans[0], grip_trans[1], grip_trans[2]])
+        gripper_trans = np.array([grip_trans[0], grip_trans[1], grip_trans[2]])
+        gripper_rot = np.array([grip_rot[0], grip_rot[1], grip_rot[2]], grip_rot[3])
 
         # the pose of the cube/box on a table        
         object_data = self.obj_positions.get_states()
@@ -158,13 +157,13 @@ class AuboPushEnv(aubo_env.AuboEnv):
         #vector of block
         object_vect = object_data[3:]
 
-        distance_from_block = self.calc_dist(object_pos,ee_array_pose)
+        distance_from_block = self.calc_dist(object_pos,gripper_trans)
 
         speed = np.linalg.norm(object_vect)
 
         # We state as observations the distance form cube, the speed of cube and the z postion of the end effector
         observations_obj = np.array([distance_from_block,
-                             speed, ee_array_pose[2]])
+                             speed, gripper_trans[2]])
 
         return  observations_obj
     
@@ -201,13 +200,13 @@ class AuboPushEnv(aubo_env.AuboEnv):
         speed = observations[1]
 
         # Did the movement fail in set action?
-        done_fail = not(self.movement_result)
+        exec_fail = not(self.movement_result)
 
-        done_sucess = speed >= self.max_speed
+        done_success = speed >= self.max_speed
 
         print(">>>>>>>>>>>>>>>>done_fail="+str(done_fail)+",done_sucess="+str(done_sucess))
         # If it moved or the arm couldnt reach a position asced for it stops
-        done = done_fail or done_sucess
+        done = exec_fail or done_success
 
         return done
 
@@ -222,11 +221,11 @@ class AuboPushEnv(aubo_env.AuboEnv):
         ee_z_pos = observations[2]
 
         # Did the movement fail in set action?
-        done_fail = not(self.movement_result)
+        exec_fail = not(self.movement_result)
 
         done_sucess = speed >= self.max_speed
 
-        if done_fail:
+        if exec_fail:
             # We punish that it trie sto move where moveit cant reach
             reward = self.impossible_movement_punishement
         else:

@@ -1,6 +1,5 @@
 <launch>
-    <include file="$(find aubo_gazebo)/launch/aubo_i5_world.launch"/>
+    <include file="$(find aubo_gazebo)/launch/aubo_simulation.launch"/>
     <include file="$(find aubo_openai_example)/launch/setup_learning_env.launch"/>
-
 </launch>
 

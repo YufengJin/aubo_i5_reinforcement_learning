@@ -1,15 +1,14 @@
 #! /usr/bin/env python
 
-from aubo_command import AuboCommand
 import numpy
 import rospy
-import time
 import tf
-from openai_ros import robot_gazebo_env
+import geometry_msgs.msg
 from std_msgs.msg import Float64
 from sensor_msgs.msg import JointState, Image
 from nav_msgs.msg import Odometry
-import geometry_msgs.msg
+from aubo_moveit_config.aubo_commander import AuboCommander
+from openai_ros import robot_gazebo_env
 
 class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
 
@@ -38,21 +37,19 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         """
         rospy.logdebug("Start AuboEnv INIT...")
 
-        JOINT_STATES_SUBSCRIBER = '/aubo_i5/joint_states'
+        JOINT_STATES_SUBSCRIBER = '/joint_states'
         GIPPER_IMAGE_SUBSCRIBER = '/aubo_i5/camera/image_raw'
         self.joint_states_sub = rospy.Subscriber(JOINT_STATES_SUBSCRIBER, JointState, self.joints_callback)
+        self.joints = JointState()
+
         self.grippper_camera_image_raw = rospy.Subscriber(GIPPER_IMAGE_SUBSCRIBER, Image, self.gripper_camera_callback)
-        #self.joints = JointState()
-        #self.grippper_camera_image_raw = Image()
+        self.grippper_camera_image_raw = Image()
 
         self.controllers_list = []
 
-
+        self.aubo_commander = AuboCommander()
         # It doesnt use namespace
         self.robot_name_space = ""
-
-        # make aubo commander
-        self.aubo_commander = AuboCommand()
 
         # We launch the init function of the Parent Class robot_gazebo_env.RobotGazeboEnv
         super(AuboEnv, self).__init__(controllers_list=self.controllers_list,
@@ -60,7 +57,7 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
 	                                    reset_controls=False,
 	                                    start_init_physics_parameters=False,
 	                                    reset_world_or_sim="WORLD")
-
+        self._setup_tf_listener()
 
 
         # get joint_
@@ -89,11 +86,11 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         self.joints = None
         while self.joints is None and not rospy.is_shutdown():
             try:
-                self.joints = rospy.wait_for_message("/aubo_i5/joint_states", JointState, timeout=1.0)
-                rospy.logdebug("Current /aubo_i5/joint_states READY=>" + str(self.joints))
+                self.joints = rospy.wait_for_message("/joint_states", JointState, timeout=1.0)
+                rospy.logdebug("Current /joint_states READY=>" + str(self.joints))
 
             except:
-                rospy.logerr("Current /aubo_i5/joint_states not ready yet, retrying for getting joint_states")
+                rospy.logerr("Current /joint_states not ready yet, retrying for getting joint_states")
         return self.joints
 
     def _check_gripper_camera_image_ready(self):
@@ -111,14 +108,23 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
     	return self.joints
 
 
-    def set_width_ee(self, value):
+    def set_trajectory_ee(self, position):
         """
-        Sets the enf effector position and orientation, value from 0.0(open) to 0.8(close) 
+        Sets the enf effector position and orientation
         """
-        
-        self.aubo_commander.set_ee(value)
 
-        return True
+        ee_pose = geometry_msgs.msg.Pose()
+        ee_pose.position.x = position[0]
+        ee_pose.position.y = position[1]
+        ee_pose.position.z = position[2]
+        ee_pose.orientation.x = 0.0
+        ee_pose.orientation.y = 1.0
+        ee_pose.orientation.z = 0.0
+        ee_pose.orientation.w = 0.0
+      
+
+        return self.aubo_commander.move_ee_to_pose(ee_pose)
+        
         
     def set_trajectory_joints(self, arm_joints):
         """
@@ -135,22 +141,40 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         position[4] = arm_joints["wrist2_joint"]
         position[5] = arm_joints["wrist3_joint"]
 
-        try:
-            self.aubo_commander.set_arm(position)
-            result = True
-        except Exception as ex:
-            print(ex)
-            result = False
 
-        return result
+        return self.aubo_commander.move_joint_traj(position)
+
+    def get_ee_pose(self):
+
+        gripper_pose = self.aubo_commander.get_ee_pose()
+        
+        return gripper_pose
+        
+    def get_ee_rpy(self):
+        
+        gripper_rpy = self.aubo_commander.get_ee_rpy()
+        
+        return gripper_rpy
+
+    def set_ee(self, value):
+        return self.aubo_commander.execut_ee(list(value))
+
+    def get_tf(self,parent,child):
+
+        parent_frame = "/"+ parent
+        child_frame = "/"+ child
+        trans, rot = None
+        try:
+            (trans, rot) = self.listener.lookupTransform(parent_frame, child_frame, rospy.Time(0))     
+        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+            rospy.logerr("TF not ready YET...")
+            pass
+        return trans, rot
 
 
     def _setup_tf_listener(self):
     	self.listener = tf.TransformListener()
 
-    def get_ee_pose(self):
-    	# return (trans , pose) of end effecter, but have a latency
-        return self.aubo_commander.get_ee_pose()
     
     def _set_init_pose(self):
         """Sets the Robot in its init pose

@@ -28,14 +28,14 @@
   <node name="spawner_gazebo_model" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen" args="-urdf -model aubo_i5 -param robot_description"/> 		
 
   <!-- publish a static transformation of center of gripper -->
-  <node name="tf_publisher_ee" pkg="tf" type="static_transform_publisher" args="0 0 0.13 0 0 0 robotiq_coupler robotiq_gripper_center 50" />
+  <node name="tf_publisher_ee" pkg="tf" type="static_transform_publisher" args="0 0 0.13 0 3.1415 0 robotiq_coupler robotiq_gripper_center 100" />
 			
 
   <rosparam file="$(find aubo_gazebo)/config/joint_names.yaml" command="load"/>                   
 
   <include file="$(find aubo_gazebo)/launch/controller_utils.launch"/>
 
-  <include file="$(find moveit_config)/launch/move_group.launch"/>
+  <!-- <include file="$(find moveit_config)/launch/move_group.launch"/> -->
   <!-- 3.run transform node /joint_state -> /gazebo every joint/command -->
 <!--   <node name="aubo_gazebo_driver" pkg="aubo_driver" type="aubo_gazebo_driver" /> -->
 
