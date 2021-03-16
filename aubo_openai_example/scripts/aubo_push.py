@@ -38,7 +38,7 @@ class AuboPushEnv(aubo_env.AuboEnv):
         self.action_space = spaces.Box(
             low=self.position_joints_min,
             high=self.position_joints_max, shape=(self.n_actions,),
-            dtype=np.float32
+            dtype=float
         )
 
         # distance between ee and block
@@ -68,7 +68,7 @@ class AuboPushEnv(aubo_env.AuboEnv):
         """
         # set limits for joint
         self.position_joints_max = 2.16
-        self.position_joints_min = 2.16
+        self.position_joints_min = -2.16
 
 
         self.sim_time = rospy.get_time()
@@ -83,8 +83,7 @@ class AuboPushEnv(aubo_env.AuboEnv):
                             "foreArm_joint": 0.6,
                             "wrist1_joint": 0.0,
                             "wrist2_joint": 1.53,
-                            "wrist3_joint": 0.0,
-                            "gripper":0.8}
+                            "wrist3_joint": 0.0}
         """
         self.setup_ee_pos = {"x": 0.598,
                             "y": 0.005,
@@ -112,7 +111,7 @@ class AuboPushEnv(aubo_env.AuboEnv):
         The Simulation will be unpaused for this purpose.
         """
         self.gazebo.unpauseSim()
-        if not (self.set_trajectory_joints(self.init_pos) and self.set_ee(self.init_pos["gripper"])):
+        if not (self.set_trajectory_joints(self.init_pos)):
             assert False, "Initialisation is failed...."
 
     def _init_env_variables(self):
@@ -144,29 +143,26 @@ class AuboPushEnv(aubo_env.AuboEnv):
         """
         self.gazebo.unpauseSim()
 
-        (grip_trans, grip_rot) = self.get_tf("world", "robotiq_gripper_center")
-        # ee postion in np array
-        gripper_trans = np.array([grip_trans[0], grip_trans[1], grip_trans[2]])
-        gripper_rot = np.array([grip_rot[0], grip_rot[1], grip_rot[2]], grip_rot[3])
+        grip_pose = self.get_ee_pose()
+        ee_array_pose = [grip_pose.position.x, grip_pose.position.y, grip_pose.position.z]
 
         # the pose of the cube/box on a table        
         object_data = self.obj_positions.get_states()
 
-        # postion of block
-        object_pos = object_data[:3]
-        #vector of block
-        object_vect = object_data[3:]
+        # speed cube
+        object_pos = object_data[3:]
 
-        distance_from_block = self.calc_dist(object_pos,gripper_trans)
+        distance_from_cube = self.calc_dist(object_pos,ee_array_pose)
 
-        speed = np.linalg.norm(object_vect)
+
+        object_velp = object_data[-3:]
+        speed = np.linalg.norm(object_velp)
 
         # We state as observations the distance form cube, the speed of cube and the z postion of the end effector
-        observations_obj = np.array([distance_from_block,
-                             speed, gripper_trans[2]])
+        observations_obj = np.array([distance_from_cube,
+                             speed, ee_array_pose[2]])
 
         return  observations_obj
-    
     def calc_dist(self,p1,p2):
         """
         d = ((2 - 1)2 + (1 - 1)2 + (2 - 0)2)1/2
@@ -200,13 +196,13 @@ class AuboPushEnv(aubo_env.AuboEnv):
         speed = observations[1]
 
         # Did the movement fail in set action?
-        exec_fail = not(self.movement_result)
+        done_fail = not(self.movement_result)
 
         done_success = speed >= self.max_speed
 
-        print(">>>>>>>>>>>>>>>>done_fail="+str(done_fail)+",done_sucess="+str(done_sucess))
+        print(">>>>>>>>>>>>>>>>done_fail="+str(done_fail)+",done_sucess="+str(done_success))
         # If it moved or the arm couldnt reach a position asced for it stops
-        done = exec_fail or done_success
+        done = done_fail or done_success
 
         return done
 
@@ -239,6 +235,6 @@ class AuboPushEnv(aubo_env.AuboEnv):
                 else:
                     # It didnt move the cube. We reward it by getting closser
                     print("Reward for getting closser")
-                    reward = 1.0 / distance
+                    reward = 1.0 / abs(distance-0.13)
 
         return reward

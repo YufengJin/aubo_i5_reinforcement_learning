@@ -2,7 +2,6 @@
 
 import numpy
 import rospy
-import tf
 import geometry_msgs.msg
 from std_msgs.msg import Float64
 from sensor_msgs.msg import JointState, Image
@@ -38,7 +37,7 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         rospy.logdebug("Start AuboEnv INIT...")
 
         JOINT_STATES_SUBSCRIBER = '/joint_states'
-        GIPPER_IMAGE_SUBSCRIBER = '/aubo_i5/camera/image_raw'
+        GIPPER_IMAGE_SUBSCRIBER = '/camera/image_raw'
         self.joint_states_sub = rospy.Subscriber(JOINT_STATES_SUBSCRIBER, JointState, self.joints_callback)
         self.joints = JointState()
 
@@ -57,7 +56,6 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
 	                                    reset_controls=False,
 	                                    start_init_physics_parameters=False,
 	                                    reset_world_or_sim="WORLD")
-        self._setup_tf_listener()
 
 
         # get joint_
@@ -97,11 +95,11 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         self.grippper_camera_image_raw = None
         while self.grippper_camera_image_raw is None and not rospy.is_shutdown():
             try:
-                self.grippper_camera_image_raw = rospy.wait_for_message("/aubo_i5/camera/image_raw", Image , timeout=1.0)
-                rospy.logdebug("Current /aubo_i5/camera/image_raw READY" )
+                self.grippper_camera_image_raw = rospy.wait_for_message("/camera/image_raw", Image , timeout=1.0)
+                rospy.logdebug("Current /camera/image_raw READY" )
 
             except:
-                rospy.logerr("Current /aubo_i5/camera/image_raw not ready yet, retrying for getting image_raw")
+                rospy.logerr("Current /camera/image_raw not ready yet, retrying for getting image_raw")
         return self.grippper_camera_image_raw
     
     def get_joints(self):
@@ -142,7 +140,7 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         position[5] = arm_joints["wrist3_joint"]
 
 
-        return self.aubo_commander.move_joint_traj(position)
+        return self.aubo_commander.move_joints_traj(position)
 
     def get_ee_pose(self):
 
@@ -157,23 +155,7 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         return gripper_rpy
 
     def set_ee(self, value):
-        return self.aubo_commander.execut_ee(list(value))
-
-    def get_tf(self,parent,child):
-
-        parent_frame = "/"+ parent
-        child_frame = "/"+ child
-        trans, rot = None
-        try:
-            (trans, rot) = self.listener.lookupTransform(parent_frame, child_frame, rospy.Time(0))     
-        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-            rospy.logerr("TF not ready YET...")
-            pass
-        return trans, rot
-
-
-    def _setup_tf_listener(self):
-    	self.listener = tf.TransformListener()
+        return self.aubo_commander.execut_ee(value)
 
     
     def _set_init_pose(self):

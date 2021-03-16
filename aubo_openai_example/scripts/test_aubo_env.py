@@ -25,9 +25,10 @@ if __name__ == '__main__':
 
     	done = False
     	for i in range(100):
-    		print(observation)
-    		action = env.action_space.sample()
-    		observation, reward, done, info = env.step(action)
-	        if done:
-	            print("Episode finished after {} timesteps".format(i+1))
-	            break
+            print(observation)
+            action = env.action_space.sample()
+            print(action)
+            observation, reward, done, info = env.step(action)
+            if done:
+                print("Episode finished after {} timesteps".format(i+1))
+                break
