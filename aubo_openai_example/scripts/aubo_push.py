@@ -99,9 +99,9 @@ class AuboPushEnv(aubo_env.AuboEnv):
         self.max_distance = 3.0
         self.max_speed = 1.0
         # 1.5 aubo can reach highest height
-        self.ee_z_max = 1.2
+        self.ee_z_max = 1.0
         # the height of table 
-        self.ee_z_min = 0.7725
+        self.ee_z_min = 0.8
 
 
 

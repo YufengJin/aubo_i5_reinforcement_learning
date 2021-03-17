@@ -47,7 +47,7 @@ class Actor:
         out_mu = Dense(self.action_dim, activation='tanh')(dense_2)
         mu_output = Lambda(lambda x: x * self.action_bound)(out_mu)
         std_output = Dense(self.action_dim, activation='softplus')(dense_2)
-        return tf.keras.models.Model(state_input, [mu_output, std_output])
+        return tf.keras.models.Model(state_input, [mu_output, std_output]) 
 
     def get_action(self, state):
         state = np.reshape(state, [1, self.state_dim])
@@ -87,13 +87,12 @@ class Critic:
         self.opt = tf.keras.optimizers.Adam(args.critic_lr)
 
     def create_model(self):
-        return tf.keras.Sequential([
-            Input((self.state_dim,)),
-            Dense(32, activation='relu'),
-            Dense(32, activation='relu'),
-            Dense(16, activation='relu'),
-            Dense(1, activation='linear')
-        ])
+        state_input = Input((self.state_dim,))
+        dense_1 = Dense(32, activation='relu')(state_input)
+        dense_2 = Dense(32, activation='relu')(dense_1)
+        dense_3 = Dense(16, activation='tanh')(dense_2)
+        std_output = Dense(1, activation='linear')(dense_3)
+        return tf.keras.models.Model(state_input, std_output)
 
     def compute_loss(self, v_pred, td_targets):
         mse = tf.keras.losses.MeanSquaredError()

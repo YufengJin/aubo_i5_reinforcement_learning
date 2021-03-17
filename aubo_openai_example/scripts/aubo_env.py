@@ -71,11 +71,12 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
 
         self.aubo_commander.scene.add_box("table",p,(0.91,0.91,0.77))
 
-        # get joint_
     def joints_callback(self, data):
+        # get joint_states
         self.joints = data
 
     def gripper_camera_callback(self, data):
+        #get camera raw
     	self.grippper_camera_image_raw = data
 
 
