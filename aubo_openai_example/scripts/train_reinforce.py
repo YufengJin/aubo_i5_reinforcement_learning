@@ -8,15 +8,14 @@ import gym
 import argparse
 import numpy as np
 from threading import Thread
-from multiprocessing import cpu_count
+
 
 import aubo_push
 import rospy
 
-from convert_shapes import change_list_to_tf
 
 tf.keras.backend.set_floatx('float64')
-wandb.init(name='A3C', project="deep-rl-tf2")
+wandb.init(name='Reinforce', project="deep-rl-pytorch")
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gamma', type=float, default=0.99)
@@ -26,86 +25,8 @@ parser.add_argument('--critic_lr', type=float, default=0.001)
 
 args = parser.parse_args()
 
-CUR_EPISODE = 0
+MAX_EPISODE = 0
 
-class Actor:
-    def __init__(self, state_dim, action_dim, action_bound, std_bound):
-        print("START Actor init")
-        self.state_dim = state_dim
-        self.action_dim = action_dim
-        self.action_bound = action_bound
-        self.std_bound = std_bound
-        self.model = self.create_model()
-        self.opt = tf.keras.optimizers.Adam(args.actor_lr)
-        self.entropy_beta = 0.01
-        print("END Actor init....")
-
-    def create_model(self):
-        state_input = Input((self.state_dim,))
-        dense_1 = Dense(32, activation='relu')(state_input)
-        dense_2 = Dense(32, activation='relu')(dense_1)
-        out_mu = Dense(self.action_dim, activation='tanh')(dense_2)
-        mu_output = Lambda(lambda x: x * self.action_bound)(out_mu)
-        std_output = Dense(self.action_dim, activation='softplus')(dense_2)
-        return tf.keras.models.Model(state_input, [mu_output, std_output]) 
-
-    def get_action(self, state):
-        state = np.reshape(state, (self.state_dim,))
-        mu, std = self.model.predict(state)
-        mu, std = mu[0], std[0]
-        return np.random.normal(mu, std, size=self.action_dim)
-
-    def log_pdf(self, mu, std, action):
-        std = tf.clip_by_value(std, self.std_bound[0], self.std_bound[1])
-        var = std ** 2
-
-        # We have to make  it the sam eshae as mu
-        action = change_list_to_tf(action, mu.shape[0], mu.shape[1])
-
-        log_policy_pdf = -0.5 * (action - mu) ** 2 / \
-            var - 0.5 * tf.math.log(var * 2 * np.pi)
-        return tf.reduce_sum(log_policy_pdf, 1, keepdims=True)
-
-    def compute_loss(self, mu, std, actions, advantages):
-        log_policy_pdf = self.log_pdf(mu, std, actions)
-        loss_policy = log_policy_pdf * advantages
-        return tf.reduce_sum(-loss_policy)
-
-    def train(self, states, actions, advantages):
-        with tf.GradientTape() as tape:
-            mu, std = self.model(states, training=True)
-            loss = self.compute_loss(mu, std, actions, advantages)
-        grads = tape.gradient(loss, self.model.trainable_variables)
-        self.opt.apply_gradients(zip(grads, self.model.trainable_variables))
-        return loss
-
-
-class Critic:
-    def __init__(self, state_dim):
-        self.state_dim = state_dim
-        self.model = self.create_model()
-        self.opt = tf.keras.optimizers.Adam(args.critic_lr)
-
-    def create_model(self):
-        state_input = Input((self.state_dim,))
-        dense_1 = Dense(32, activation='relu')(state_input)
-        dense_2 = Dense(32, activation='relu')(dense_1)
-        dense_3 = Dense(16, activation='tanh')(dense_2)
-        std_output = Dense(1, activation='linear')(dense_3)
-        return tf.keras.models.Model(state_input, std_output)
-
-    def compute_loss(self, v_pred, td_targets):
-        mse = tf.keras.losses.MeanSquaredError()
-        return mse(td_targets, v_pred)
-
-    def train(self, states, td_targets):
-        with tf.GradientTape() as tape:
-            v_pred = self.model(states, training=True)
-            assert v_pred.shape == td_targets.shape
-            loss = self.compute_loss(v_pred, tf.stop_gradient(td_targets))
-        grads = tape.gradient(loss, self.model.trainable_variables)
-        self.opt.apply_gradients(zip(grads, self.model.trainable_variables))
-        return loss
 
 
 class Agent:

@@ -48,7 +48,6 @@ class AuboCommander(object):
         self.gripper_group = moveit_commander.MoveGroupCommander("gripper")
 
 
-        
     def check_close(goal,actual,tolerance=0.01):
         """
         Convenience method for testing if a list of values are within a tolerance of their counterparts in another list
@@ -109,15 +108,16 @@ class AuboCommander(object):
             current_joint_state = self.arm_group.get_current_joint_values()
             done = self.check_close(joint_state_goal, current_joint_state)
         else:
+            # not planning motion found
             done = False
         return done
 
     def execute_trajectory(self):
         
         #self.plan = self.arm_group.plan()
-        flag = self.arm_group.go(wait=True)
+        done = self.arm_group.go(wait=True)
         self.arm_group.stop()
-        return flag
+        return done
 
     def get_ee_pose(self):
         # pose of wrist3_link
@@ -147,7 +147,7 @@ class AuboCommander(object):
 
         return done
 
-
+# test file
 
 # if __name__ == "__main__":
     
@@ -155,12 +155,13 @@ class AuboCommander(object):
 #     traj_serv_object = AuboCommander()
 
 #     print("Initializing the joint states....")
-#     print(traj_serv_object.move_joints_traj([0.0, 0.0, 0.6, 0.0, 1.53, 0.0]))
 #     pose_goal = traj_serv_object.get_ee_pose()
 #     print(pose_goal)
  
 
-#     pose_goal.position.z = 1
+#     pose_goal.position.x = 0.5
+#     pose_goal.position.y = 0
+#     pose_goal.position.z = 0.7
 #     pose_goal.orientation.x = 0
 #     pose_goal.orientation.y = 1
 #     pose_goal.orientation.z = 0
@@ -171,7 +172,5 @@ class AuboCommander(object):
 #     print("if succeed? ", traj_serv_object.move_ee_to_pose(pose_goal))
 #     print(traj_serv_object.get_ee_pose())
 #     traj_serv_object.execut_ee([0.8])
-#     print(traj_serv_object.arm_group.get_end_effector_link())
-#     print(traj_serv_object.gripper_group.get_end_effector_link())
 
     

@@ -27,6 +27,9 @@ class AuboPushEnv(aubo_env.AuboEnv):
         #super(utils.EzPickle,self).__init__()
         
         rospy.loginfo("Entered Push Env")
+        # initalize gripper block 
+        self.gripper_block = False
+
         self.obj_positions = Obj_Pos(object_name="block")
 
         self.get_params()
@@ -34,12 +37,22 @@ class AuboPushEnv(aubo_env.AuboEnv):
 
         self.gazebo.unpauseSim()
 
-      # self.action_space = spaces.Discrete(self.n_actions)
+        # define working space for aciton
+        x_low = np.array(self.x_min)
+        x_high = np.array(self.x_max)
+        y_low = np.array(self.y_min)
+        y_high = np.array(self.y_max)
+        z_low = np.array(self.z_min)
+        z_high = np.array(self.z_max)
+        ee_low = np.array(self.ee_open)
+        ee_high= np.array(self.ee_close)
+
+        pos_low = np.concatenate([x_low, y_low, z_low, ee_low])
+        pos_high = np.concatenate([x_high, y_high, z_high, ee_high])
+        
         self.action_space = spaces.Box(
-            low=self.position_joints_min,
-            high=self.position_joints_max, shape=(self.n_actions,),
-            dtype=float
-        )
+            low=pos_low,
+            high=pos_high)
 
         # distance between ee and block
         observations_high_dist = np.array([self.max_distance])
@@ -59,36 +72,38 @@ class AuboPushEnv(aubo_env.AuboEnv):
         obs = self._get_obs()
 
 
-        
+    def block_gripper(self):
+        # deactivate the grippper during training
+        self.gripper_block = True 
 
     def get_params(self):
         """
         get configuration parameters
 
         """
-        # set limits for joint
-        self.position_joints_max = 2.16
-        self.position_joints_min = -2.16
+        # set limits for end_effector(working space above the table)
+        self.x_max = 0.75 + 0.91/2
+        self.x_min = 0.75 - 0.91/2
+        self.y_max = 0.91/2
+        self.y_min = - 0.91/2
+        self.z_max = 1.3
+        self.z_min = 0.77
 
+        # gripper maximum and minimum 
+        self.ee_close = 0.8
+        self.ee_open = 0.0
 
         self.sim_time = rospy.get_time()
-        self.n_actions = 6
+        self.n_actions = 4
         self.n_observations = 3
-        self.position_ee_max = 10.0
-        self.position_ee_min = -10.0
+ 
 
 
-        self.init_pos = {   "shoulder_joint": 0.0,
-                            "upperArm_joint": 0.0,
-                            "foreArm_joint": 0.6,
-                            "wrist1_joint": 0.0,
-                            "wrist2_joint": 1.53,
-                            "wrist3_joint": 0.0}
-        """
-        self.setup_ee_pos = {"x": 0.598,
-                            "y": 0.005,
-                            "z": 0.9}
-        """
+
+        self.setup_ee_pos = {"x": 0.5,
+                            "y": 0,
+                            "z": 1.1}
+
 
         self.position_delta = 0.1
         self.step_punishment = -1
