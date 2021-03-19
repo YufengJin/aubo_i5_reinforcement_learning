@@ -59,6 +59,7 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
 	                                    reset_controls=False,
 	                                    start_init_physics_parameters=False,
 	                                    reset_world_or_sim="WORLD")
+
     def setup_planning_scene(self):
         # add table mesh in scene planning, avoiding to collosion
         rospy.sleep(2)
