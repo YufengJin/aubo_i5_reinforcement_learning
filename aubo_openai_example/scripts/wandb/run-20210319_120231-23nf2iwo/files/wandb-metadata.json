@@ -1,0 +1,24 @@
+{
+    "os": "Linux-5.4.0-67-generic-x86_64-with-glibc2.29",
+    "python": "3.8.5",
+    "heartbeatAt": "2021-03-19T11:02:33.278892",
+    "startedAt": "2021-03-19T11:02:31.185201",
+    "docker": null,
+    "gpu": "Quadro M4000",
+    "gpu_count": 1,
+    "cpu_count": 4,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "./train_a3c_continous_aubo.py",
+    "codePath": "aubo_openai_example/scripts/train_a3c_continous_aubo.py",
+    "git": {
+        "remote": "https://github.com/YufengJin/aubo_i5_reinforcement_learning.git",
+        "commit": "27b3f1b712ec7c9c6feb11a09e523ca7fcf17936"
+    },
+    "email": "you@example.com",
+    "root": "/home/vrpraktikum/Schreibtisch/aubo_rl_ws/src/aubo_i5_reinforcement_learning",
+    "host": "thinkstation2108",
+    "username": "vrpraktikum",
+    "executable": "/usr/bin/python3"
+}
