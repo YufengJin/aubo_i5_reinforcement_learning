@@ -3,7 +3,6 @@
 from gym import utils
 import math
 import rospy
-from gym import spaces
 import aubo_env
 from gym.envs.registration import register
 import numpy as np
@@ -12,7 +11,7 @@ max_episode_steps = 1000 # Can be any Value
 
 register(
         id='AuboPushCube-v0',
-        entry_point='aubo_push:AuboPushCubeEnv',
+        entry_point='aubo_push_cube:AuboPushCubeEnv',
         max_episode_steps=max_episode_steps,
     )
 
@@ -20,14 +19,19 @@ register(
 class AuboPushCubeEnv(aubo_env.AuboEnv):
     def __init__(self):
         
-        aubo_env.AuboEnv.__init__(self, gripper_block = True, action_type = "ee_control")
+        aubo_env.AuboEnv.__init__(self, gripper_block = True, action_type = "ee_control",object_name = "block")
 
         rospy.loginfo("Entered CubePush Env")
 
         self.gazebo.unpauseSim()
         
         obs = self._get_obs()
+        
+        self.cube_desired_goal = {'x': 0.75, 'y':0.1}
 
+        self.distance_threshold = 0.05
+
+        self.cube_move_threshold = 0.01
 
     def calc_dist(self,p1,p2):
         """
@@ -52,23 +56,34 @@ class AuboPushCubeEnv(aubo_env.AuboEnv):
         self.sim_time = current_time
         return dt
 
+    def _is_success(self, achived_goal, goal):
+
+        done = False
+
+        distance = self.calc_dist(goal,achived_goal)
+
+        if distance < self.distance_threshold:
+            done = True
+
+        return done
+
     def _is_done(self, observations):
         """
-        If the latest Action didnt succeed, it means that tha position asked was imposible therefore the episode must end.
-        It will also end if it reaches its goal.
+        if movement planning fail, it done. and the cube reach the desired position it     
         """
 
-        distance = observations[0]
-        speed = observations[1]
+        cube_pos = observations[7:10]
 
         # Did the movement fail in set action?
-        done_fail = not(self.movement_result)
+        mov_fail = not(self.movement_succees)
 
-        done_success = speed >= self.max_speed
+        goal = [self.cube_desired_goal['x'],self.cube_desired_goal['y'],cube_pos[2]]
 
-        print(">>>>>>>>>>>>>>>>done_fail="+str(done_fail)+",done_sucess="+str(done_success))
+        done_success = self._is_success(cube_pos, goal)
+
+        print(">>>>>>>>>>>>>>>> Movement planning fails: "+str(mov_fail)+", Mission completed: "+str(done_success))
         # If it moved or the arm couldnt reach a position asced for it stops
-        done = done_fail or done_success
+        done = mov_fail or done_success
 
         return done
 
@@ -78,14 +93,20 @@ class AuboPushCubeEnv(aubo_env.AuboEnv):
         Punish movint to unreachable positions
         Calculate the reward: binary => 1 for success, 0 for failure
         """
-        distance = observations[0]
-        speed = observations[1]
-        ee_z_pos = observations[2]
 
+        ee_pos = observations[:3]
+ 
+        cube_pos = observations[7:10]
+
+        cube_vel = np.linalg.norm(observations[-3:])
+
+        goal = [self.cube_desired_goal['x'], self.cube_desired_goal['y'],cube_pos[2]]
         # Did the movement fail in set action?
-        exec_fail = not(self.movement_result)
+        exec_fail = not(self.movement_succees)
 
-        done_sucess = speed >= self.max_speed
+        done_sucess = self._is_success(cube_pos, goal)
+
+        ee_clo_to_cube = self._is_success(ee_pos,cube_pos)
 
         if exec_fail:
             # We punish that it trie sto move where moveit cant reach
@@ -93,14 +114,13 @@ class AuboPushCubeEnv(aubo_env.AuboEnv):
         else:
             if done_sucess:
                 #It moved the cube
-                reward = -1*self.impossible_movement_punishement
+                reward = self.done_reward
             else:
-                if ee_z_pos < self.ee_z_min or ee_z_pos >= self.ee_z_max:
-                    print("Punish, ee z too low or high..."+str(ee_z_pos))
-                    reward = self.impossible_movement_punishement / 4.0
+                if ee_clo_to_cube and cube_vel > self.cube_move_threshold:
+                    # ee close to cube
+                    reward = 0
                 else:
-                    # It didnt move the cube. We reward it by getting closser
-                    print("Reward for getting closser")
-                    reward = 1.0 / abs(distance-0.13)
+                    # ee didnt get close to cube
+                    reward = -1
 
         return reward

@@ -10,13 +10,13 @@ import numpy as np
 from threading import Thread
 from multiprocessing import cpu_count
 
-import aubo_push
+import aubo_push_cube
 import rospy
 
 from convert_shapes import change_list_to_tf
 
 tf.keras.backend.set_floatx('float64')
-wandb.init(name='A3C', project="deep-rl-tf2")
+wandb.init(name='A3C', project="AuboPushCube")
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gamma', type=float, default=0.99)
@@ -258,7 +258,7 @@ class WorkerAgent(Thread):
 
 def main():
     rospy.init_node("train_aubo_her")
-    env_name = 'AuboPush-v0'
+    env_name = 'AuboPushCube-v0'
     agent = Agent(env_name)
     agent.train()
 

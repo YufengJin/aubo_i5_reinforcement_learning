@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-import numpy
+import numpy as np
 import rospy
 import tf
 from std_msgs.msg import Float64
@@ -10,6 +10,7 @@ from geometry_msgs.msg import PoseStamped, Pose
 from aubo_moveit_config.aubo_commander import AuboCommander
 from openai_ros import robot_gazebo_env
 from obj_positions import Obj_Pos
+from gym import spaces
 
 
 class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
@@ -74,6 +75,7 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         self.set_action_observation_space()
 
 
+
     def get_params(self):
         """
         get configuration parameters
@@ -100,41 +102,45 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
 
         self.init_pos = [0, 0.6, 0, 0, 1.53, 0, 0.0]
         # ee postion and gripper (x,y,z,ee)
-        self.setup_ee_pos = [0.5, 0, 1.1, 0.8]
+        self.setup_ee_pos = [0.45, 0, 1.2, 0.0]
 
+        self.impossible_movement_punishement = - 20
+        self.done_reward = 20
 
     def set_action_observation_space(self):
 
-    	if self.action_type == "ee_control":
-	    	# define working space for aciton
-	        x_low = np.array(self.x_min)
-	        x_high = np.array(self.x_max)
-	        y_low = np.array(self.y_min)
-	        y_high = np.array(self.y_max)
-	        z_low = np.array(self.z_min)
-	        z_high = np.array(self.z_max)
-	        ee_low = np.array(self.ee_open)
-	        ee_high= np.array(self.ee_close)
+        if self.action_type == "ee_control":
+            # define working space for aciton
+            x_low = np.array([self.x_min])
+            x_high = np.array([self.x_max])
+            y_low = np.array([self.y_min])
+            y_high = np.array([self.y_max])
+            z_low = np.array([self.z_min])
+            z_high = np.array([self.z_max])
+            ee_low = np.array([self.ee_open])
+            ee_high= np.array([self.ee_close])
 
-	        pos_low = np.concatenate([x_low, y_low, z_low, ee_low])
-	        pos_high = np.concatenate([x_high, y_high, z_high, ee_high])
-	        
-	        self.action_space = spaces.Box(
-	            low=pos_low,
-	            high=pos_high, shape=(4,), dtype='float32')
+            pos_low = np.concatenate([x_low, y_low, z_low, ee_low])
+            pos_high = np.concatenate([x_high, y_high, z_high, ee_high])
+            
+            self.action_space = spaces.Box(
+                low=pos_low,
+                high=pos_high, shape=(4,), dtype='float32')
 
-	    elif self.action_type == "joints_control":
+            self.observation_space = spaces.Box(-np.inf, np.inf, shape = (self.n_observations,), dtype ='float32')
 
-	    	joint_low = np.ones(6)*self.position_joints_min
-	    	joint_high = np.ones(6)*self.position_joints_max
+        elif self.action_type == "joints_control":
 
-	    	ee_low = np.array(self.ee_open)
-	        ee_high= np.array(self.ee_close)
+            joint_low = np.ones(6)*self.position_joints_min
+            joint_high = np.ones(6)*self.position_joints_max
 
-	        joints_low = np.concatenate([joint_low, ee_low])
-	        joints_high = np.concatenate([joint_high, ee_high])
-	        
-			self.action_space = spaces.Box(
+            ee_low = np.array(self.ee_open)
+            ee_high= np.array(self.ee_close)
+
+            joints_low = np.concatenate([joint_low, ee_low])
+            joints_high = np.concatenate([joint_high, ee_high])
+            
+            self.action_space = spaces.Box(
             low= joints_low,
             high= joints_high, shape=(7),
             dtype='float32')
@@ -162,7 +168,7 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
 
     def gripper_camera_callback(self, data):
         #get camera raw
-    	self.grippper_camera_image_raw = data
+        self.grippper_camera_image_raw = data
 
     def get_joints(self):
     	return self.joints
@@ -225,10 +231,10 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         """
         self.gazebo.unpauseSim()
         if self.action_type == "ee_control":
-			assert self._set_action(self.setup_ee_pos), "Initializing failed"
+            assert self._set_action(self.setup_ee_pos), "Initializing failed"
 
-	    elif self.action_type == "joints_control":
-	    	assert self._set_action(self.init_pos), "Initializing failed"
+        elif self.action_type == "joints_control":
+            assert self._set_action(self.init_pos), "Initializing failed"
 
 
     def _init_env_variables(self):
@@ -248,56 +254,58 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         """
 
         # action should be list, but i want to clip the list
-        # action = np.clip(action.copy(),self.action_space.low, self.action_space.high)
+        action = np.clip(action.copy(),self.action_space.low, self.action_space.high)
+        print("choosed action", action)
+        action_list = action.tolist()
 
         # joint_state control
         if self.action_type == "joints_control":
-        	assert len(action) == 7, "Action spaces should be 7 dimensions"
-        	joint_states, ee_value = action[:6], action[7]
+            assert len(action_list) == 7, "Action spaces should be 7 dimensions"
+            joint_states, ee_value = action_list[:6], action_list[7]
 
-        	# gripper always close
-        	if self.gripper_block == True:
-	        	print("Gripper Block")
-        		ee_value = 0.8
+            # gripper always close
+            if self.gripper_block == True:
+                ee_value = 0.8
 
-        	self.movement_succees = self.aubo_commander.move_joints_traj(joint_states) and self.aubo_commander.execut_ee([ee_value])
+            self.movement_succees = self.aubo_commander.move_joints_traj(joint_states) and self.aubo_commander.execut_ee([ee_value])
         
         # end effector control , and ee always with fixed rpy
         elif self.action_type == "ee_control":
-        	assert len(action) == 4, "Action should be 4 dimensions"
+            assert len(action_list) == 4, "Action should be 4 dimensions"
 
-        	ee_pose = Pose()
-	        ee_pose.position.x = action[0]
-	        ee_pose.position.z = action[1]
-	        ee_pose.position.y = action[2]
-	        ee_pose.orientation.y = 1.0
-	        ee_pose.orientation.z = 0.0
-	        ee_pose.orientation.w = 0.0
-	        ee_pose.orientation.x = 0.0
+            ee_pose = Pose()
+            ee_pose.position.x = action_list[0]
+            ee_pose.position.y = action_list[1]
+            ee_pose.position.z = action_list[2]
+            ee_pose.orientation.y = 1.0
+            ee_pose.orientation.z = 0.0
+            ee_pose.orientation.w = 0.0
+            ee_pose.orientation.x = 0.0
 
-	        ee_value = action[3]
+            ee_value = action_list[3]
 
-	        if self.gripper_block:
-	        	print("Gripper Block")
-	            ee_value = 0.8
+            if self.gripper_block:
+                ee_value = 0.8
 
-	        self.movement_succees = self.aubo_commander.move_ee_to_pose(ee_pose) and self.aubo_commander.execut_ee([ee_value])
+            self.movement_succees = self.aubo_commander.move_ee_to_pose(ee_pose) and self.aubo_commander.execut_ee([ee_value])
 
+        return self.movement_succees
 
 
     def _get_obs(self):
-    	        """
+        """
         It returns the Position of the TCP/EndEffector as observation.
         And the speed of cube
         Orientation for the moment is not considered
         """
+
         self.gazebo.unpauseSim()
 
         self.listener.waitForTransform("/world","/robotiq_gripper_center", rospy.Time(), rospy.Duration(4.0))
         try:
-        	now = rospy.Time.now()
-        	self.listener.waitForTransform("/world","/robotiq_gripper_center", now, rospy.Duration(4.0))
-        	(trans, rot) = self.listener.lookupTransform("/world", "/robotiq_gripper_center", now)
+            now = rospy.Time.now()
+            self.listener.waitForTransform("/world","/robotiq_gripper_center", now, rospy.Duration(4.0))
+            (trans, rot) = self.listener.lookupTransform("/world", "/robotiq_gripper_center", now)
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
             raise e
         # using moveit_commander to get end effector pose
@@ -313,16 +321,16 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         obj_data = self.obj.get_states().copy()
 
         # postion of object
-        obj_trans = object_data[3:]
+        obj_trans = obj_data[:3]
 
         # orientation of object
-        obj_rot = object_data[4:7]
+        obj_rot = obj_data[3:7]
         # speed of object
-        obj_vel = object_data[-3:]
+        obj_vel = obj_data[-3:]
 
         # observation spaces 17
         obs = np.concatenate([ee_trans, ee_rot, obj_trans, obj_rot, obj_vel])
-        
+ 
         return  obs
 
 
