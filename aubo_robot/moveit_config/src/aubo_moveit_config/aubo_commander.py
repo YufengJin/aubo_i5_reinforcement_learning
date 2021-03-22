@@ -10,28 +10,6 @@ import trajectory_msgs.msg
 import math
 from moveit_commander.conversions import pose_to_list
 
-def euler_from_quaternion(x, y, z, w):
-        """
-        Convert a quaternion into euler angles (roll, pitch, yaw)
-        roll is rotation around x in radians (counterclockwise)
-        pitch is rotation around y in radians (counterclockwise)
-        yaw is rotation around z in radians (counterclockwise)
-        """
-        t0 = +2.0 * (w * x + y * z)
-        t1 = +1.0 - 2.0 * (x * x + y * y)
-        roll_x = math.atan2(t0, t1)
-     
-        t2 = +2.0 * (w * y - z * x)
-        t2 = +1.0 if t2 > +1.0 else t2
-        t2 = -1.0 if t2 < -1.0 else t2
-        pitch_y = math.asin(t2)
-     
-        t3 = +2.0 * (w * z + x * y)
-        t4 = +1.0 - 2.0 * (y * y + z * z)
-        yaw_z = math.atan2(t3, t4)
-     
-        return roll_x, pitch_y, yaw_z # in radians
-
 
 
 class AuboCommander(object):
@@ -121,13 +99,13 @@ class AuboCommander(object):
 
     def get_ee_pose(self):
         # pose of wrist3_link
-        gripper_pose = self.arm_group.get_current_pose()
+        gripper_pose = self.gripper_group.get_current_pose()
 
         return gripper_pose.pose
         
     def get_ee_rpy(self):
         # row, pitch and yaw of wrist3_link
-        gripper_rpy = self.arm_group.get_current_rpy()
+        gripper_rpy = self.gripper_group.get_current_rpy()
         roll = gripper_rpy[0]
         pitch = gripper_rpy[1]
         yaw = gripper_rpy[2]

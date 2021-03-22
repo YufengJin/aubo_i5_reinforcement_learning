@@ -22,7 +22,7 @@ class Obj_Pos(object):
 
     def get_states(self):
         """
-        Returns the ndarray of pose&rotation of the cube
+        Returns the ndarray of pose&rotation of the cube, 10 dimensions
         """
         for model_name in self.model_names:
             if model_name == self._object_name:
@@ -32,17 +32,13 @@ class Obj_Pos(object):
                     data.pose.position.x,
                     data.pose.position.y,
                     data.pose.position.z,
+                    data.pose.orientation.x,
+                    data.pose.orientation.y,
+                    data.pose.orientation.z,
+                    data.pose.orientation.w,
                     data.twist.linear.x,
                     data.twist.linear.y,
                     data.twist.linear.z
                 ])
 
 
-if __name__ == "__main__":
-    obj_positions = Obj_Pos(object_name="block")
-    st = obj_positions.get_states()
-    r = rospy.Rate(5.0)
-    while not rospy.is_shutdown():
-        st = obj_positions.get_states()
-        print(st)
-        r.sleep()

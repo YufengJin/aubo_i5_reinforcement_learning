@@ -19,15 +19,12 @@ register(
     )
 
 
-#class AuboPushEnv(aubo_env.AuboEnv, utils.EzPickle):
 class AuboPushEnv(aubo_env.AuboEnv):
     def __init__(self):
         
-        super(AuboPushEnv, self).__init__()
-        #super(utils.EzPickle,self).__init__()
+        aubo_env.AuboEnv.__init__(self, gripper_block = True, action_type = "ee_control", object_name = "block")
         
         rospy.loginfo("Entered Push Env")
-        self.obj_positions = Obj_Pos(object_name="block")
 
         self.get_params()
 
@@ -136,33 +133,8 @@ class AuboPushEnv(aubo_env.AuboEnv):
 
 
     def _get_obs(self):
-        """
-        It returns the Position of the TCP/EndEffector as observation.
-        And the speed of cube
-        Orientation for the moment is not considered
-        """
-        self.gazebo.unpauseSim()
+        pass
 
-        grip_pose = self.get_ee_pose()
-        ee_array_pose = [grip_pose.position.x, grip_pose.position.y, grip_pose.position.z]
-
-        # the pose of the cube/box on a table        
-        object_data = self.obj_positions.get_states()
-
-        # speed cube
-        object_pos = object_data[3:]
-
-        distance_from_cube = self.calc_dist(object_pos,ee_array_pose)
-
-
-        object_velp = object_data[-3:]
-        speed = np.linalg.norm(object_velp)
-
-        # We state as observations the distance form cube, the speed of cube and the z postion of the end effector
-        observations_obj = np.array([distance_from_cube,
-                             speed, ee_array_pose[2]])
-
-        return  observations_obj
     def calc_dist(self,p1,p2):
         """
         d = ((2 - 1)2 + (1 - 1)2 + (2 - 0)2)1/2
