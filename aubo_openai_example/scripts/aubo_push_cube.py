@@ -27,9 +27,9 @@ class AuboPushCubeEnv(aubo_env.AuboEnv):
         
         obs = self._get_obs()
         
-        self.cube_desired_goal = {'x': 0.75, 'y':0.1}
+        self.cube_desired_goal = {'x': 0.7, 'y':0.1}
 
-        self.distance_threshold = 0.05
+        self.ee_to_obj_threshold = 0.01
 
         self.cube_move_threshold = 0.01
 
@@ -56,13 +56,13 @@ class AuboPushCubeEnv(aubo_env.AuboEnv):
         self.sim_time = current_time
         return dt
 
-    def _is_success(self, achived_goal, goal):
+    def _is_success(self, achived_goal, goal, threshold):
 
         done = False
 
         distance = self.calc_dist(goal,achived_goal)
 
-        if distance < self.distance_threshold:
+        if distance < threshold:
             done = True
 
         return done
@@ -79,7 +79,7 @@ class AuboPushCubeEnv(aubo_env.AuboEnv):
 
         goal = [self.cube_desired_goal['x'],self.cube_desired_goal['y'],cube_pos[2]]
 
-        done_success = self._is_success(cube_pos, goal)
+        done_success = self._is_success(cube_pos, goal, self.cube_move_threshold)
 
         print(">>>>>>>>>>>>>>>> Movement planning fails: "+str(mov_fail)+", Mission completed: "+str(done_success))
         # If it moved or the arm couldnt reach a position asced for it stops
@@ -104,9 +104,11 @@ class AuboPushCubeEnv(aubo_env.AuboEnv):
         # Did the movement fail in set action?
         exec_fail = not(self.movement_succees)
 
-        done_sucess = self._is_success(cube_pos, goal)
+        done_sucess = self._is_success(cube_pos, goal, self.cube_move_threshold)
 
-        ee_clo_to_cube = self._is_success(ee_pos,cube_pos)
+        ee_clo_to_cube = self._is_success(ee_pos,cube_pos, self.ee_to_obj_threshold)
+
+        distance_goal = self.calc_dist(cube_pos,goal)
 
         if exec_fail:
             # We punish that it trie sto move where moveit cant reach
@@ -116,11 +118,11 @@ class AuboPushCubeEnv(aubo_env.AuboEnv):
                 #It moved the cube
                 reward = self.done_reward
             else:
-                if ee_clo_to_cube and cube_vel > self.cube_move_threshold:
+                if ee_clo_to_cube:
                     # ee close to cube
                     reward = 0
                 else:
                     # ee didnt get close to cube
-                    reward = -1
+                    reward = - 1
 
         return reward

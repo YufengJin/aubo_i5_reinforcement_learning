@@ -82,12 +82,12 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
 
         """
         # set limits for end_effector(working space above the table)
-        self.x_max = 0.75 + 0.91/2
+        self.x_max = 0.75
         self.x_min = 0.75 - 0.91/2
-        self.y_max = 0.91/2
-        self.y_min = - 0.91/2
-        self.z_max = 1.3
-        self.z_min = 0.77
+        self.y_max = 0.9/2
+        self.y_min = - 0.9/2
+        self.z_max = 1.1
+        self.z_min = 0.96
 
         # gripper maximum and minimum 
         self.ee_close = 0.8
@@ -102,10 +102,10 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
 
         self.init_pos = [0, 0.6, 0, 0, 1.53, 0, 0.0]
         # ee postion and gripper (x,y,z,ee)
-        self.setup_ee_pos = [0.45, 0, 1.2, 0.0]
+        self.setup_ee_pos = [0.45, 0, 1.1, 0.0]
 
         self.impossible_movement_punishement = - 20
-        self.done_reward = 20
+        self.done_reward = 100
 
     def set_action_observation_space(self):
 
