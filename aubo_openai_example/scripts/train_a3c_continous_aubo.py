@@ -29,11 +29,12 @@ args = parser.parse_args()
 CUR_EPISODE = 0
 
 class Actor:
-    def __init__(self, state_dim, action_dim, action_bound, std_bound):
+    def __init__(self, state_dim, action_dim, action_bound_high, action_bound_low, std_bound):
         print("START Actor init")
         self.state_dim = state_dim
         self.action_dim = action_dim
-        self.action_bound = action_bound
+        self.action_bound_high = action_bound_high
+        self.action_bound_low  = action_bound_low
         self.std_bound = std_bound
         self.model = self.create_model()
         self.opt = tf.keras.optimizers.Adam(args.actor_lr)
@@ -45,7 +46,8 @@ class Actor:
         dense_1 = Dense(32, activation='relu')(state_input)
         dense_2 = Dense(32, activation='relu')(dense_1)
         out_mu = Dense(self.action_dim, activation='tanh')(dense_2)
-        mu_output = Lambda(lambda x: x * self.action_bound)(out_mu)
+        #mu_output = Lambda(lambda x: x * self.action_bound)(out_mu)
+        mu_output = Dense(self.action_dim, activation='linear')(dense_2)
         std_output = Dense(self.action_dim, activation='softplus')(dense_2)
         return tf.keras.models.Model(state_input, [mu_output, std_output]) 
 
@@ -115,11 +117,12 @@ class Agent:
         self.env_name = env_name
         self.state_dim = env.observation_space.shape[0]
         self.action_dim = env.action_space.shape[0]
-        self.action_bound = env.action_space.high[0]
+        self.action_bound_high = env.action_space.high
+        self.action_bound_low = env.action_space.low
         self.std_bound = [1e-2, 1.0]
 
         self.global_actor = Actor(
-            self.state_dim, self.action_dim, self.action_bound, self.std_bound)
+            self.state_dim, self.action_dim, self.action_bound_high, self.action_bound_low, self.std_bound)
         self.global_critic = Critic(self.state_dim)
 
         
@@ -150,14 +153,15 @@ class WorkerAgent(Thread):
         self.env = env
         self.state_dim = self.env.observation_space.shape[0]
         self.action_dim = self.env.action_space.shape[0]
-        self.action_bound = self.env.action_space.high[0]
+        self.action_bound_high = env.action_space.high
+        self.action_bound_low = env.action_space.low
         self.std_bound = [1e-2, 1.0]
 
         self.max_episodes = max_episodes
         self.global_actor = global_actor
         self.global_critic = global_critic
         self.actor = Actor(self.state_dim, self.action_dim,
-                           self.action_bound, self.std_bound)
+                           self.action_bound_high, self.action_bound_low, self.std_bound)
         self.critic = Critic(self.state_dim)
 
         self.actor.model.set_weights(self.global_actor.model.get_weights())
@@ -196,7 +200,7 @@ class WorkerAgent(Thread):
 
             print("####################### START AC3")
             print('EP{} EpisodeReward={}'.format(CUR_EPISODE, episode_reward))
-            wandb.log({'Reward': episode_reward})
+            #wandb.log({'Reward': episode_reward})
 
             state = self.env.reset()
 
@@ -204,7 +208,7 @@ class WorkerAgent(Thread):
 
                 action = self.actor.get_action(state)
 
-                action = np.clip(action, -self.action_bound, self.action_bound)
+                action = np.clip(action, self.action_bound_low, self.action_bound_high)
 
                 next_state, reward, done, _ = self.env.step(action)
 
@@ -247,7 +251,9 @@ class WorkerAgent(Thread):
                 state = next_state[0]
 
                 print('EP{} EpisodeReward={}'.format(CUR_EPISODE, episode_reward))
+                
                 wandb.log({'Reward': episode_reward})
+
 
             
             CUR_EPISODE += 1

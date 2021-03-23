@@ -247,21 +247,23 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         
 
 
-    def _set_action(self, action):
+    def _set_action(self, orig_action):
         """Applies the given action to the simulation.
         Args:
         	actions(list): 7 or 4 action spaces
         """
-
-        # action should be list, but i want to clip the list
-        action = np.clip(action.copy(),self.action_space.low, self.action_space.high)
-        print("choosed action", action)
-        action_list = action.tolist()
+        if isinstance(orig_action, list):
+            action = [float(i) for i in orig_action]
+        elif isinstance(orig_action, (np.ndarray, np.generic)):
+            action = orig_action.tolist()
+        else:
+            raise 'Data type of action errors'
+            
 
         # joint_state control
         if self.action_type == "joints_control":
-            assert len(action_list) == 7, "Action spaces should be 7 dimensions"
-            joint_states, ee_value = action_list[:6], action_list[7]
+            assert len(action) == 7, "Action spaces should be 7 dimensions"
+            joint_states, ee_value = action[:6], action[7]
 
             # gripper always close
             if self.gripper_block == True:
@@ -271,18 +273,18 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         
         # end effector control , and ee always with fixed rpy
         elif self.action_type == "ee_control":
-            assert len(action_list) == 4, "Action should be 4 dimensions"
+            assert len(action) == 4, "Action should be 4 dimensions"
 
             ee_pose = Pose()
-            ee_pose.position.x = action_list[0]
-            ee_pose.position.y = action_list[1]
-            ee_pose.position.z = action_list[2]
+            ee_pose.position.x = action[0]
+            ee_pose.position.y = action[1]
+            ee_pose.position.z = action[2]
             ee_pose.orientation.y = 1.0
             ee_pose.orientation.z = 0.0
             ee_pose.orientation.w = 0.0
             ee_pose.orientation.x = 0.0
 
-            ee_value = action_list[3]
+            ee_value = action[3]
 
             if self.gripper_block:
                 ee_value = 0.8

@@ -25,7 +25,8 @@ if __name__ == '__main__':
 
     	done = False
     	for i in range(100):
-            print(env.observation_space.shape[0])
+            print(env.action_space.high)
+            print(env.action_space.low)
             action = env.action_space.sample()
             print(env.action_space.shape[0])
             observation, reward, done, info = env.step(action)
