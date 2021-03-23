@@ -3,6 +3,6 @@
     <include file="$(find aubo_sim_examples)/launch/spawn_block_table.launch"/>
 
     <!-- We start the Block Odom and TF publish for control purposes -->
-    <include file="$(find aubo_sim_examples)/launch/setup_block_systems_env.launch"/>
+    <!--include file="$(find aubo_sim_examples)/launch/setup_block_systems_env.launch"/-->
 
 </launch>

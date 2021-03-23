@@ -26,6 +26,7 @@ class AuboCommander(object):
         self.gripper_group = moveit_commander.MoveGroupCommander("gripper")
 
 
+
         
     def check_close(goal,actual,tolerance=0.01):
         """
@@ -136,9 +137,9 @@ if __name__ == "__main__":
 
     pose_goal = geometry_msgs.msg.Pose()
 
-    pose_goal.position.x = 0.7
-    pose_goal.position.y = 0.1
-    pose_goal.position.z = 0.96
+    pose_goal.position.x = 0.6
+    pose_goal.position.y = -0.3
+    pose_goal.position.z = 0.95
     pose_goal.orientation.x = 0
     pose_goal.orientation.y = 1
     pose_goal.orientation.z = 0

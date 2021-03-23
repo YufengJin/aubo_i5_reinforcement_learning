@@ -42,13 +42,18 @@ class RobotGazeboEnv(gym.Env):
         Here we should convert the action num to movement action, execute the action in the
         simulation and get the observations result of performing that action.
         """
-        rospy.logdebug("START STEP OpenAIROS")
+        rospy.logdebug("START STEP OpenAI ROS")
         
         self.gazebo.unpauseSim()
         self._set_action(action)
         self.gazebo.pauseSim()
+
+        self.gazebo.unpauseSim()
         obs = self._get_obs()
+        self.gazebo.pauseSim()
+
         done = self._is_done(obs)
+
         info = {}
         reward = self._compute_reward(obs, done)
         self.cumulated_episode_reward += reward
@@ -62,7 +67,9 @@ class RobotGazeboEnv(gym.Env):
         self._reset_sim()
         self._init_env_variables()
         self._update_episode()
+        self.gazebo.unpauseSim()
         obs = self._get_obs()
+        self.gazebo.pauseSim()
         rospy.logdebug("END Reseting RobotGazeboEnvironment")
         return obs
 
@@ -107,7 +114,7 @@ class RobotGazeboEnv(gym.Env):
     def _reset_sim(self):
         """Resets a simulation
         """
-        rospy.logdebug("START robot gazebo _reset_sim")
+        rospy.logdebug("Reset Gazebo Environment")
         if self.reset_controls :
             self.gazebo.unpauseSim()
             self.controllers_object.reset_controllers()
@@ -121,8 +128,7 @@ class RobotGazeboEnv(gym.Env):
             self.gazebo.pauseSim()
             
         else:
-            self.gazebo.unpauseSim()
-            
+            self.gazebo.unpauseSim()       
             self._check_all_systems_ready()
             self._set_init_pose()
             self.gazebo.pauseSim()
@@ -132,7 +138,7 @@ class RobotGazeboEnv(gym.Env):
             self._check_all_systems_ready()
             self.gazebo.pauseSim()
         
-        rospy.logdebug("END robot gazebo _reset_sim")
+        rospy.logdebug("Reset Environment END")
         return True
 
     def _set_init_pose(self):

@@ -15,7 +15,7 @@ from gym import spaces
 
 class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
 
-    def __init__(self, gripper_block, action_type, object_name):
+    def __init__(self, gripper_block, action_type, object_name, has_object):
         """
         Initializes a new aubo environment.
         
@@ -43,7 +43,10 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
 
         self.gripper_block = gripper_block
         self.action_type = action_type
-        self.obj = Obj_Pos(object_name = object_name)
+        self.has_object = has_object
+
+        if self.has_object:
+            self.obj = Obj_Pos(object_name = object_name)
 
         rospy.logdebug("Start AuboEnv INIT...")
 
@@ -87,14 +90,14 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         self.y_max = 0.9/2
         self.y_min = - 0.9/2
         self.z_max = 1.1
-        self.z_min = 0.96
+        self.z_min = 0.95
 
         # gripper maximum and minimum 
         self.ee_close = 0.8
         self.ee_open = 0.0
 
         self.sim_time = rospy.get_time()
-        self.n_observations = 17
+        self.n_observations = 20
 
         # joint_state_control(joint_states, ee)
         self.position_joints_max = 2.16
@@ -104,8 +107,7 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         # ee postion and gripper (x,y,z,ee)
         self.setup_ee_pos = [0.45, 0, 1.1, 0.0]
 
-        self.impossible_movement_punishement = - 20
-        self.done_reward = 100
+        self.done_reward = 20
 
     def set_action_observation_space(self):
 
@@ -252,14 +254,9 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         Args:
         	actions(list): 7 or 4 action spaces
         """
-        if isinstance(orig_action, list):
-            action = [float(i) for i in orig_action]
-        elif isinstance(orig_action, (np.ndarray, np.generic)):
-            action = orig_action.tolist()
-        else:
-            raise 'Data type of action errors'
-            
-
+        # list and clip the action
+        action = np.clip(orig_action ,self.action_space.low, self.action_space.high).tolist()
+    
         # joint_state control
         if self.action_type == "joints_control":
             assert len(action) == 7, "Action spaces should be 7 dimensions"
@@ -301,8 +298,6 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         Orientation for the moment is not considered
         """
 
-        self.gazebo.unpauseSim()
-
         self.listener.waitForTransform("/world","/robotiq_gripper_center", rospy.Time(), rospy.Duration(4.0))
         try:
             now = rospy.Time.now()
@@ -314,24 +309,33 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         # grip_pose = self.get_ee_pose()
         # ee_array_pose = [grip_pose.position.x, grip_pose.position.y, grip_pose.position.z]
 
-        ee_trans = np.array(trans).reshape(3,)
+        ee_pos = np.array(trans).reshape(3,)
         # rotation in quaterion
         ee_rot = np.array(rot).reshape(4,)
 
+        if self.has_object:
+            # the pose of the cube/box on a table        
+            obj_data = self.obj.get_states().copy()
 
-        # the pose of the cube/box on a table        
-        obj_data = self.obj.get_states().copy()
+            # postion of object
+            obj_pos = obj_data[:3]
 
-        # postion of object
-        obj_trans = obj_data[:3]
+            # orientation of object
+            obj_rot = obj_data[3:7]
 
-        # orientation of object
-        obj_rot = obj_data[3:7]
-        # speed of object
-        obj_vel = obj_data[-3:]
+            # speed of object
+            obj_vel = obj_data[-3:]
 
-        # observation spaces 17
-        obs = np.concatenate([ee_trans, ee_rot, obj_trans, obj_rot, obj_vel])
+            obj_rel_pos = obj_pos - ee_pos
+        else:
+            obj_pos = np.zeros(3)
+            obj_rot = np.zeros(4)
+            obj_vel = np.zeros(3)
+            obj_rel_pos = np.zeros(3)
+
+
+        # observation spaces 20
+        obs = np.concatenate([ee_pos, ee_rot, obj_pos, obj_rot, obj_vel, obj_rel_pos])
  
         return  obs
 

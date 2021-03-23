@@ -28,7 +28,7 @@
   <node name="spawner_gazebo_model" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen" args="-urdf -model aubo_i5 -param robot_description"/> 		
 
   <!-- publish a static transformation of center of gripper -->
-  <node name="tf_publisher_ee" pkg="tf" type="static_transform_publisher" args="0 0 0.13 0 3.1415 0 robotiq_coupler robotiq_gripper_center 100" />
+  <node name="tf_publisher_ee" pkg="tf" type="static_transform_publisher" args="0 0 0.15 0 3.1415 0 robotiq_coupler robotiq_gripper_center 100" />
 			
 
   <rosparam file="$(find aubo_gazebo)/config/joint_names.yaml" command="load"/>                   

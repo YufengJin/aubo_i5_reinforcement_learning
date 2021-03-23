@@ -10,24 +10,24 @@ import numpy as np
 max_episode_steps = 1000 # Can be any Value
 
 register(
-        id='AuboPushCube-v0',
-        entry_point='aubo_push_cube:AuboPushCubeEnv',
+        id='AuboPickAndPlace-v0',
+        entry_point='aubo_pick_place:AuboPickAndPlaceEnv',
         max_episode_steps=max_episode_steps,
     )
 
 
-class AuboPushCubeEnv(aubo_env.AuboEnv):
+class AuboPickAndPlaceEnv(aubo_env.AuboEnv):
     def __init__(self):
         
-        aubo_env.AuboEnv.__init__(self, gripper_block = True, action_type = "ee_control",object_name = "block", has_object = True)
+        aubo_env.AuboEnv.__init__(self, gripper_block = False, action_type = "ee_control",object_name = "block", has_object = True)
 
-        rospy.loginfo("Entered CubePush Env")
+        rospy.loginfo("Entered AuboPickAndPlaceEnv Env")
 
         self.gazebo.unpauseSim()
         
         obs = self._get_obs()
         
-        self.cube_desired_goal = {'x': 0.6, 'y': -0.2}
+        self.cube_desired_goal = {'x': 0.4, 'y': 0, 'z': 1.0}
 
         self.ee_to_obj_threshold = 0.05
 
@@ -77,7 +77,7 @@ class AuboPushCubeEnv(aubo_env.AuboEnv):
         # Did the movement fail in set action?
         mov_fail = not(self.movement_succees)
 
-        goal = [self.cube_desired_goal['x'],self.cube_desired_goal['y'],cube_pos[2]]
+        goal = [self.cube_desired_goal['x'],self.cube_desired_goal['y'],self.cube_desired_goal['z']]
 
         done_success = self._is_success(cube_pos, goal, self.goal_threshold)
 
@@ -99,7 +99,7 @@ class AuboPushCubeEnv(aubo_env.AuboEnv):
 
         cube_rel_pos_abs = np.linalg.norm(observations[-3:])
 
-        goal = [self.cube_desired_goal['x'], self.cube_desired_goal['y'],cube_pos[2]]
+        goal = [self.cube_desired_goal['x'], self.cube_desired_goal['y'],self.cube_desired_goal['z']]
         # Did the movement fail in set action?
         exec_fail = not(self.movement_succees)
 
