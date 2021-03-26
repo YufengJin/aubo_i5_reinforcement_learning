@@ -107,7 +107,7 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         # ee postion and gripper (x,y,z,ee)
         self.setup_ee_pos = [0.45, 0, 1.1, 0.0]
 
-        self.done_reward = 20
+        self.done_reward = 100
 
     def set_action_observation_space(self):
 

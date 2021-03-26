@@ -24,6 +24,8 @@ class AuboPushCubeEnv(aubo_env.AuboEnv):
         rospy.loginfo("Entered CubePush Env")
 
         self.gazebo.unpauseSim()
+
+        self.sparse_reward = False
         
         obs = self._get_obs()
         
@@ -74,6 +76,9 @@ class AuboPushCubeEnv(aubo_env.AuboEnv):
 
         cube_pos = observations[7:10]
 
+        # Did the cube fail on the ground?
+        if cube_pos < 0.7: cube_fail = True
+        
         # Did the movement fail in set action?
         mov_fail = not(self.movement_succees)
 
@@ -81,9 +86,9 @@ class AuboPushCubeEnv(aubo_env.AuboEnv):
 
         done_success = self._is_success(cube_pos, goal, self.goal_threshold)
 
-        print(">>>>>>>>>>>>>>>> Movement planning fails: "+str(mov_fail)+", Mission completed: "+str(done_success))
+        rospy.logdebug(">>>>>>>>>>>>>>>> Movement planning fails: "+str(mov_fail)+", Mission completed: "+str(done_success))
         # If it moved or the arm couldnt reach a position asced for it stops
-        done = mov_fail or done_success
+        done = mov_fail or done_success or cube_fail
 
         return done
 
@@ -105,21 +110,29 @@ class AuboPushCubeEnv(aubo_env.AuboEnv):
 
         done_sucess = self._is_success(cube_pos, goal, self.goal_threshold)
 
-        #distance_goal = self.calc_dist(cube_pos,goal)
-
+        distance_goal = self.calc_dist(cube_pos,goal)
+        #print("distance of goal: ", distance_goal)
+        #print("distance from ee to cube: ", cube_rel_pos_abs)
+        reward = 0
         if exec_fail:
             # We punish that it trie sto move where moveit cant reach
-            reward = -1
+            reward = -10
         else:
             if done_sucess:
+                if self.sparse_reward:
                 #It moved the cube
-                reward = self.done_reward
-            else:
-                if cube_rel_pos_abs < self.ee_to_obj_threshold:
-                    # ee close to cube
-                    reward = 0
+                    reward = self.done_reward
                 else:
+                    reward -= distance_goal
+            else:
+                if self.sparse_reward:
+                    if cube_rel_pos_abs < self.ee_to_obj_threshold:
+                    # ee close to cube
+                        reward = 0
+                    else:
                     # ee didnt get close to cube
-                    reward = - 1
+                        reward = -1
+                else:
+                    reward -= cube_rel_pos_abs
 
         return reward

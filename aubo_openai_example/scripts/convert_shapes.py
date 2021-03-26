@@ -9,9 +9,9 @@ def convert_to_tf(arg):
 
 def change_shape(original,shape_x, shape_y):
     original_np = np.array(original)
-    print("Original Shape=="+str(original_np.shape))
+    #print("Original Shape=="+str(original_np.shape))
     new = np.reshape(original_np, (shape_x, shape_y))
-    print("Morfed Shape=="+str(new.shape))
+    #print("Morfed Shape=="+str(new.shape))
     return new
 
 def change_list_to_tf(original_list, shape_x, shape_y):
