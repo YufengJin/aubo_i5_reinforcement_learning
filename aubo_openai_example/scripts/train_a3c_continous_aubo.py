@@ -9,16 +9,16 @@ import argparse
 import numpy as np
 from threading import Thread
 from multiprocessing import cpu_count
-
-import aubo_pick_place
+import push_cube_sim
+#import aubo_pick_place
 #import aubo_push_cube
 import rospy
 
 from convert_shapes import change_list_to_tf
 
 tf.keras.backend.set_floatx('float64')
-wandb.init(name='A3C', project="AuboPickAndPlace")
-#wandb.init(name='A3C', project="AuboPushCube")
+#wandb.init(name='A3C', project="AuboPickAndPlace")
+wandb.init(name='A3C', project="PushCubeSim")
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gamma', type=float, default=0.99)
@@ -200,20 +200,18 @@ class WorkerAgent(Thread):
             reward_batch = []
             episode_reward, done = 0, False
 
-            print("####################### START AC3")
-            print('EP{} EpisodeReward={}'.format(CUR_EPISODE, episode_reward))
-            #wandb.log({'Reward': episode_reward})
+            #print("####################### START AC3")
+            #print('EP{} EpisodeReward={}'.format(CUR_EPISODE, episode_reward))
 
             state = self.env.reset()
 
-            while not done:
+            for i in range(30):
 
                 action = self.actor.get_action(state)
-
-                action = np.clip(action, self.action_bound_low, self.action_bound_high)
-
+                #action = np.clip(action, self.action_bound_low, self.action_bound_high)
                 next_state, reward, done, _ = self.env.step(action)
-
+                if done:
+                    break
                 state = np.reshape(state, [1, self.state_dim])
                 #action = np.reshape(action, [1, 1])
                 next_state = np.reshape(next_state, [1, self.state_dim])
@@ -226,6 +224,7 @@ class WorkerAgent(Thread):
                 if len(state_batch) >= args.update_interval or done:
                     states = self.list_to_batch(state_batch)
                     actions = self.list_to_batch(action_batch)
+                 
                     rewards = self.list_to_batch(reward_batch)
 
                     next_v_value = self.critic.model.predict(next_state)
@@ -265,11 +264,11 @@ class WorkerAgent(Thread):
 
 
 def main():
-    rospy.init_node("train_aubo_pick_place")
-    #rospy.init_node("train_aubo_push")
+    #rospy.init_node("train_aubo_pick_place")
+    rospy.init_node("train_aubo_push")
 
-    env_name = 'AuboPickAndPlace-v0'
-    # env_name = 'AuboPushCube-v0'
+    #env_name = 'AuboPickAndPlace-v0'
+    env_name = 'PushCubeSim-v0'
     agent = Agent(env_name)
     agent.train()
 
