@@ -30,24 +30,24 @@ class GazeboConnection():
         self.pauseSim()
 
     def pauseSim(self):
-        rospy.logwarn("PAUSING START")
+        rospy.logdebug("PAUSING START")
         rospy.wait_for_service('/gazebo/pause_physics')
         try:
             self.pause()
         except rospy.ServiceException as e:
             print ("/gazebo/pause_physics service call failed")
             
-        rospy.logwarn("PAUSING FINISH")
+        rospy.logdebug("PAUSING FINISH")
         
     def unpauseSim(self):
-        rospy.logwarn("UNPAUSING START")
+        rospy.logdebug("UNPAUSING START")
         rospy.wait_for_service('/gazebo/unpause_physics')
         try:
             self.unpause()
         except rospy.ServiceException as e:
             print ("/gazebo/unpause_physics service call failed")
         
-        rospy.logwarn("UNPAUSING FiNISH")
+        rospy.logdebug("UNPAUSING FiNISH")
         
     
     def resetSim(self):
@@ -58,10 +58,10 @@ class GazeboConnection():
         systems.
         """
         if self.reset_world_or_sim == "SIMULATION":
-            rospy.logerr("SIMULATION RESET")
+            rospy.logdebug("SIMULATION RESET")
             self.resetSimulation()
         elif self.reset_world_or_sim == "WORLD":
-            rospy.logerr("WORLD RESET")
+            rospy.logdebug("WORLD RESET")
             self.resetWorld()
         elif self.reset_world_or_sim == "NO_RESET_SIM":
             rospy.logerr("NO RESET SIMULATION SELECTED")
@@ -87,7 +87,7 @@ class GazeboConnection():
         self.resetSim()
 
         if self.start_init_physics_parameters:
-            rospy.logwarn("Initialising Simulation Physics Parameters")
+            rospy.logdebug("Initialising Simulation Physics Parameters")
             self.init_physics_parameters()
         else:
             rospy.logerr("NOT Initialising Simulation Physics Parameters")

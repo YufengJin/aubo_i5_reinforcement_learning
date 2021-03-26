@@ -43,15 +43,13 @@ class RobotGazeboEnv(gym.Env):
         simulation and get the observations result of performing that action.
         """
         rospy.logdebug("START STEP OpenAI ROS")
-        
+
         self.gazebo.unpauseSim()
         self._set_action(action)
-        self.gazebo.pauseSim()
 
-        self.gazebo.unpauseSim()
         obs = self._get_obs()
-        self.gazebo.pauseSim()
 
+        self.gazebo.pauseSim()
         done = self._is_done(obs)
 
         info = {}
