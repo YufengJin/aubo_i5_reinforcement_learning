@@ -23,21 +23,38 @@ import numpy as np
 from collections import deque
 import matplotlib.pyplot as plt
 # %matplotlib inline
-from aubo_push_cube
+import aubo_push_cube
 from ddpg_agent import Agent
 
-
+N_EPISODES = 1000
+PRINT_EVERY = 10
 wandb.init(name='DDPG', project="AuboPushCube")
 
-"""###  Train the Agent with DDPG"""
 
-def ddpg(n_episodes=1000, print_every=10):
-    scores_deque = deque(maxlen=print_every)
-    for i_episode in range(1, n_episodes+1):
+
+def main():
+    rospy.init_node("train_aubo_pick_place", log_level=rospy.ERROR)
+    #rospy.init_node("train_aubo_push")
+
+    env = gym.make('AuboPushCube-v0')
+    env.seed(2)
+    state_size = env.observation_space.shape[0]
+    action_size = env.action_space.shape[0]
+    action_bound = {'low': env.action_space.low,
+                    'high': env.action_space.high}
+    agent = Agent(state_size=state_size, action_size=action_size, random_seed=2, action_bound=action_bound)
+
+    """###  Load the saved torch file for actor and critic"""
+
+    # agent.actor_local.load_state_dict(torch.load('checkpoint_actor.pth'))
+    # agent.critic_local.load_state_dict(torch.load('checkpoint_critic.pth'))
+
+    scores_deque = deque(maxlen=PRINT_EVERY)
+    for i_episode in range(1, N_EPISODES+1):
         state = env.reset()
         agent.reset()
         score = 0
-        while True:
+        for i in range(20):
             action = agent.act(state)
             next_state, reward, done, _ = env.step(action)
             agent.step(state, action, reward, next_state, done)
@@ -50,28 +67,14 @@ def ddpg(n_episodes=1000, print_every=10):
         print('\rEpisode {}\tAverage Score: {:.2f}'.format(i_episode, np.mean(scores_deque)), end="")
         torch.save(agent.actor_local.state_dict(), 'checkpoint_actor.pth')
         torch.save(agent.critic_local.state_dict(), 'checkpoint_critic.pth')
-        if i_episode % print_every == 0:
+        if i_episode % PRINT_EVERY == 0:
             print('\rEpisode {}\tAverage Score: {:.2f}'.format(i_episode, np.mean(scores_deque)))
             
 
 
 
-
-def main():
-    rospy.init_node("train_aubo_pick_place")
-    #rospy.init_node("train_aubo_push")
-
-
-    env = gym.make('AuboPushCube-v0')
-    env.seed(2)
-    agent = Agent(state_size=3, action_size=1, random_seed=2)
-
-    """###  Load the saved torch file for actor and critic"""
-
-    # agent.actor_local.load_state_dict(torch.load('checkpoint_actor.pth'))
-    # agent.critic_local.load_state_dict(torch.load('checkpoint_critic.pth'))
-
-    ddpg()
+if __name__ == "__main__":
+    main()
 
 """###  Explore
 
