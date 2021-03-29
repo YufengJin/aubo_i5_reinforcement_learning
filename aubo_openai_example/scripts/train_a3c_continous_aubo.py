@@ -37,6 +37,8 @@ class Actor:
         self.action_dim = action_dim
         self.action_bound_high = action_bound_high
         self.action_bound_low  = action_bound_low
+        self.action_mu = (action_bound_high + action_bound_low) / 2
+        self.action_delta = (action_bound_high - action_bound_low) / 2 
         self.std_bound = std_bound
         self.model = self.create_model()
         self.opt = tf.keras.optimizers.Adam(args.actor_lr)
@@ -48,8 +50,8 @@ class Actor:
         dense_1 = Dense(32, activation='relu')(state_input)
         dense_2 = Dense(32, activation='relu')(dense_1)
         out_mu = Dense(self.action_dim, activation='tanh')(dense_2)
-        #mu_output = Lambda(lambda x: x * self.action_bound)(out_mu)
-        mu_output = Dense(self.action_dim, activation='linear')(dense_2)
+        mu_output = Lambda(lambda x: self.action_mu + self.action_delta * x)(out_mu)
+        #mu_output = Dense(self.action_dim, activation='linear')(dense_2)
         std_output = Dense(self.action_dim, activation='softplus')(dense_2)
         return tf.keras.models.Model(state_input, [mu_output, std_output]) 
 
@@ -205,11 +207,15 @@ class WorkerAgent(Thread):
 
             state = self.env.reset()
 
-            for i in range(30):
+            while True:
 
                 action = self.actor.get_action(state)
                 #action = np.clip(action, self.action_bound_low, self.action_bound_high)
                 next_state, reward, done, _ = self.env.step(action)
+                # print('position of ee: ', next_state[:3])
+                # print('position of obj: ', next_state[-3:])
+                # print('reward: ', reward)
+                # print()
                 if done:
                     break
                 state = np.reshape(state, [1, self.state_dim])
@@ -251,9 +257,9 @@ class WorkerAgent(Thread):
                 episode_reward += reward[0][0]
                 state = next_state[0]
 
-                print('EP{} EpisodeReward={}'.format(CUR_EPISODE, episode_reward))
-                
-                wandb.log({'Reward': episode_reward})
+            print('EP{} EpisodeReward={}'.format(CUR_EPISODE, episode_reward))
+            
+            wandb.log({'Reward': episode_reward})
 
 
             

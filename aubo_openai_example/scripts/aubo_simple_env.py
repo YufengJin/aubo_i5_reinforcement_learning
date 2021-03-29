@@ -13,6 +13,15 @@ from obj_positions import Obj_Pos
 from gym import spaces
 
 
+def gen_sphere_action(last_action, action, semidia = 0.05):
+    delta = action - last_action
+    if np.linalg.norm(delta) < 1e-5: 
+        result = action
+    else:
+        scalar = semidia/np.linalg.norm(delta)
+        result = last_action + scalar * delta if scalar <= 1 else action
+    return result
+
 class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
 
     def __init__(self, gripper_block, object_name, has_object):
@@ -42,7 +51,7 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
         """
         self.gripper_block = gripper_block
         self.has_object = has_object
-
+    
         if self.has_object:
             self.obj = Obj_Pos(object_name = object_name)
 
@@ -71,10 +80,13 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
 	                                    reset_controls=False,
 	                                    start_init_physics_parameters=False,
 	                                    reset_world_or_sim="WORLD")
+        
+
         self.get_params()
 
         self.set_action_observation_space()
 
+        
 
 
     def get_params(self):
@@ -98,7 +110,7 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
         self.n_observations = 6
 
         # ee postion and gripper (x,y,z,ee)
-        self.setup_ee_pos = [0.45, 0, 1.1, 0.0]
+        self.setup_ee_pos = np.array([0.45, 0, 1.1, 0.8])
 
         self.done_reward = 100
 
@@ -205,8 +217,21 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
         The Simulation will be unpaused for this purpose.
         """
         self.gazebo.unpauseSim()
+        action = self.setup_ee_pos.tolist()
 
-        assert self._set_action(self.setup_ee_pos), "Initializing failed"
+        ee_pose = Pose()
+        ee_pose.position.x = action[0]
+        ee_pose.position.y = action[1]
+        ee_pose.position.z = action[2]
+        ee_pose.orientation.y = 1.0
+        ee_pose.orientation.z = 0.0
+        ee_pose.orientation.w = 0.0
+        ee_pose.orientation.x = 0.0
+
+        ee_value = action[3]
+
+        self.last_action = self.setup_ee_pos
+        assert self.aubo_commander.move_ee_to_pose(ee_pose) and self.aubo_commander.execut_ee([ee_value]), "Initializing failed"
 
     
 
@@ -227,8 +252,21 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
         """
         assert len(orig_action) == 4, "Action should be 4 dimensions"
         # list and clip the action
-        action = np.clip(orig_action ,self.action_space.low, self.action_space.high).tolist()
+        preaction = np.clip(orig_action ,self.action_space.low, self.action_space.high)
 
+
+        last_action = gen_sphere_action(self.last_action, preaction)
+
+        if self.gripper_block:
+            last_action[3] = 0.8
+        
+        self.last_action = last_action
+
+
+
+        action = last_action.tolist()
+
+  
         ee_pose = Pose()
         ee_pose.position.x = action[0]
         ee_pose.position.y = action[1]
@@ -240,8 +278,6 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
 
         ee_value = action[3]
 
-        if self.gripper_block:
-            ee_value = 0.8
 
         self.movement_succees = self.aubo_commander.move_ee_to_pose(ee_pose) and self.aubo_commander.execut_ee([ee_value])
 

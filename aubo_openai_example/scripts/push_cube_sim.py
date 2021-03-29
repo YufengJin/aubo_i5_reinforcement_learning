@@ -25,15 +25,15 @@ class PushCubeSimEnv(aubo_simple_env.AuboSimpleEnv):
 
         self.gazebo.unpauseSim()
 
-        self.sparse_reward = False
+        self.sparse_reward = True
         
         obs = self._get_obs()
         
         self.cube_desired_goal = {'x': 0.6, 'y': -0.2}
 
-        self.ee_to_obj_threshold = 0.05
+        self.ee_to_obj_threshold = 0.1
 
-        self.goal_threshold = 0.03
+        self.goal_threshold = 0.05
 
     def calc_dist(self,p1,p2):
         """
@@ -113,8 +113,8 @@ class PushCubeSimEnv(aubo_simple_env.AuboSimpleEnv):
         done_sucess = self._is_success(cube_pos, goal, self.goal_threshold)
 
         distance_goal = self.calc_dist(cube_pos,goal)
-        #print("distance of goal: ", distance_goal)
-        #print("distance from ee to cube: ", cube_rel_pos_abs)
+        # print("distance of goal: ", distance_goal)
+        # print("distance from ee to cube: ", cube_rel_pos_abs)
         reward = 0
         if mov_fail:
             # We punish that it trie sto move where moveit cant reach
@@ -133,6 +133,6 @@ class PushCubeSimEnv(aubo_simple_env.AuboSimpleEnv):
                     # ee didnt get close to cube
                         reward = -1
                 else:
-                    reward -= (cube_rel_pos_abs + distance_goal)
+                    reward -= (cube_rel_pos_abs + 10*distance_goal)
 
         return reward
