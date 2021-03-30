@@ -49,7 +49,7 @@ class Actor:
         state_input = Input((self.state_dim,))
         dense_1 = Dense(32, activation='relu')(state_input)
         dense_2 = Dense(32, activation='relu')(dense_1)
-        out_mu = Dense(self.action_dim, activation='tanh')(dense_2)
+        out_mu = Dense(self.action_dim, activation='tanh')(dense_2)      
         mu_output = Lambda(lambda x: self.action_mu + self.action_delta * x)(out_mu)
         #mu_output = Dense(self.action_dim, activation='linear')(dense_2)
         std_output = Dense(self.action_dim, activation='softplus')(dense_2)

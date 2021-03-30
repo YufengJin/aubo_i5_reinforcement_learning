@@ -96,7 +96,7 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
         """
         # set limits for end_effector(working space above the table)
         self.x_max = 0.75
-        self.x_min = 0.75 - 0.91/2
+        self.x_min = 0.75 - 0.9/2
         self.y_max = 0.9/2
         self.y_min = - 0.9/2
         self.z_max = 1.1
@@ -113,6 +113,8 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
         self.setup_ee_pos = np.array([0.45, 0, 1.1, 0.8])
 
         self.done_reward = 100
+
+
 
     def set_action_observation_space(self):
 

@@ -25,7 +25,7 @@ class PushCubeSimEnv(aubo_simple_env.AuboSimpleEnv):
 
         self.gazebo.unpauseSim()
 
-        self.sparse_reward = True
+        self.sparse_reward = False
         
         obs = self._get_obs()
         
@@ -133,6 +133,6 @@ class PushCubeSimEnv(aubo_simple_env.AuboSimpleEnv):
                     # ee didnt get close to cube
                         reward = -1
                 else:
-                    reward -= (cube_rel_pos_abs + 10*distance_goal)
+                    reward -= (cube_rel_pos_abs + 5 * distance_goal)
 
         return reward
