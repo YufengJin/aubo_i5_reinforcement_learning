@@ -12,10 +12,25 @@ from openai_ros import robot_gazebo_env
 from obj_positions import Obj_Pos
 from gym import spaces
 
+def goal_distance(goal_a, goal_b):
+    assert goal_a.shape == goal_b.shape
+    return np.linalg.norm(goal_a - goal_b, axis=-1)
+
+
+def gen_sphere_action(last_action, action, semidia = 0.05):
+    delta = action[:3] - last_action[:3]
+    result = np.zeros(4)
+    if np.linalg.norm(delta) < semidia: 
+        result = action
+    else:
+        scalar = semidia/np.linalg.norm(delta)
+        result[:3] = last_action[:3] + scalar * delta
+        result[3] = action[3]
+    return result
 
 class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
 
-    def __init__(self, gripper_block, action_type, object_name, has_object):
+    def __init__(self, object_name, block_gripper, has_object, target_in_the_air, target_range, distance_threshold, initial_pos, reward_type):
         """
         Initializes a new aubo environment.
         
@@ -36,48 +51,72 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         * /aubo_i5/gripper_controller/gripper_cmd
 
         
-        Args:
-        gripper_block(bool) : whether or not gripper execuated
-        action_type(string): "joints_control" and "ee_control"
+
+       Args:
+            model_path (string): path to the environments XML file
+            block_gripper (boolean): whether or not the gripper is blocked (i.e. not movable) or not
+            has_object (boolean): whether or not the environment has an object
+            target_in_the_air (boolean): whether or not the target should be in the air above the table or on the table surface
+            target_range (float): range of a uniform distribution for sampling a target
+            distance_threshold (float): the threshold after which a goal is considered achieved
+            initial_qpos (dict): a dictionary of joint names and values that define the initial configuration
+            reward_type ('sparse' or 'dense'): the reward type, i.e. sparse or dense
         """
-
-        self.gripper_block = gripper_block
-        self.action_type = action_type
+        self.block_gripper = block_gripper
         self.has_object = has_object
-
-        if self.has_object:
-            self.obj = Obj_Pos(object_name = object_name)
-
-        rospy.logdebug("Start AuboEnv INIT...")
-
-        JOINT_STATES_SUBSCRIBER = '/joint_states'
-        GIPPER_IMAGE_SUBSCRIBER = '/camera/image_raw'
-        self.joint_states_sub = rospy.Subscriber(JOINT_STATES_SUBSCRIBER, JointState, self.joints_callback)
-        self.joints = JointState()
-        self.listener = tf.TransformListener()
-
-        self.grippper_camera_image_raw = rospy.Subscriber(GIPPER_IMAGE_SUBSCRIBER, Image, self.gripper_camera_callback)
-        self.grippper_camera_image_raw = Image()
+        self.target_in_the_air = target_in_the_air
+        self.target_range = target_range
+        self.distance_threshold = distance_threshold
+        self.reward_type = reward_type
+        self.object_name = object_name
+        self.initial_gripper_pos = initial_pos['end_effector']
+        self.initial_object_pos = initial_pos[object_name]
 
         self.controllers_list = []
 
+        self.robot_name_space = ""
+        
         self.aubo_commander = AuboCommander()
-
+        # add collision with table mesh
         self.setup_planning_scene()
         # It doesnt use namespace
-        self.robot_name_space = ""
 
+        self.listener = tf.TransformListener()
+        # create object class
+        if self.has_object:
+            self.obj = Obj_Pos(object_name = object_name)
+
+        self.height_offset = 0.7725
         # We launch the init function of the Parent Class robot_gazebo_env.RobotGazeboEnv
-        super(AuboEnv, self).__init__(controllers_list=self.controllers_list,
+        super(AuboEnv, self).__init__(  controllers_list=self.controllers_list,
 	                                    robot_name_space=self.robot_name_space,
 	                                    reset_controls=False,
 	                                    start_init_physics_parameters=False,
 	                                    reset_world_or_sim="WORLD")
-        self.get_params()
-
-        self.set_action_observation_space()
 
 
+
+
+
+        rospy.logdebug("Start AuboEnv INIT...")
+
+        GIPPER_IMAGE_SUBSCRIBER = '/camera/image_raw'
+       
+
+
+        self.grippper_camera_image_raw = rospy.Subscriber(GIPPER_IMAGE_SUBSCRIBER, Image, self.gripper_camera_callback)
+        self.grippper_camera_image_raw = Image()
+
+        action_space_low = np.array([-0.25,-0.25,0.95,0.])
+        action_space_high = np.array([0.25,0.25,1.2,0.8])
+        obs = self._get_obs()
+
+        self.action_space = spaces.Box(action_space_low, action_space_high, shape=(4,), dtype='float32')
+        self.observation_space = spaces.Dict(dict(
+            desired_goal=spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
+            achieved_goal=spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
+            observation=spaces.Box(-np.inf, np.inf, shape=obs['observation'].shape, dtype='float32'),
+        ))
 
     def get_params(self):
         """
@@ -96,60 +135,30 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         self.ee_close = 0.8
         self.ee_open = 0.0
 
-        self.sim_time = rospy.get_time()
-        self.n_observations = 20
-
-        # joint_state_control(joint_states, ee)
-        self.position_joints_max = 2.16
-        self.position_joints_min = -2.16
-
-        self.init_pos = [0, 0.6, 0, 0, 1.53, 0, 0.0]
-        # ee postion and gripper (x,y,z,ee)
-        self.setup_ee_pos = [0.45, 0, 1.1, 0.0]
-
         self.done_reward = 100
 
     def set_action_observation_space(self):
 
-        if self.action_type == "ee_control":
-            # define working space for aciton
-            x_low = np.array([self.x_min])
-            x_high = np.array([self.x_max])
-            y_low = np.array([self.y_min])
-            y_high = np.array([self.y_max])
-            z_low = np.array([self.z_min])
-            z_high = np.array([self.z_max])
-            ee_low = np.array([self.ee_open])
-            ee_high= np.array([self.ee_close])
+        # define working space for aciton
+        x_low = np.array([self.x_min])
+        x_high = np.array([self.x_max])
+        y_low = np.array([self.y_min])
+        y_high = np.array([self.y_max])
+        z_low = np.array([self.z_min])
+        z_high = np.array([self.z_max])
+        ee_low = np.array([self.ee_open])
+        ee_high= np.array([self.ee_close])
 
-            pos_low = np.concatenate([x_low, y_low, z_low, ee_low])
-            pos_high = np.concatenate([x_high, y_high, z_high, ee_high])
-            
-            self.action_space = spaces.Box(
-                low=pos_low,
-                high=pos_high, shape=(4,), dtype='float32')
+        pos_low = np.concatenate([x_low, y_low, z_low, ee_low])
+        pos_high = np.concatenate([x_high, y_high, z_high, ee_high])
+        
+        self.action_space = spaces.Box(
+            low=pos_low,
+            high=pos_high, shape=(4,), dtype='float32')
 
-            self.observation_space = spaces.Box(-np.inf, np.inf, shape = (self.n_observations,), dtype ='float32')
+        self.observation_space = spaces.Box(-np.inf, np.inf, shape = (self.n_observations,), dtype ='float32')
 
-        elif self.action_type == "joints_control":
-
-            joint_low = np.ones(6)*self.position_joints_min
-            joint_high = np.ones(6)*self.position_joints_max
-
-            ee_low = np.array(self.ee_open)
-            ee_high= np.array(self.ee_close)
-
-            joints_low = np.concatenate([joint_low, ee_low])
-            joints_high = np.concatenate([joint_high, ee_high])
-            
-            self.action_space = spaces.Box(
-            low= joints_low,
-            high= joints_high, shape=(7),
-            dtype='float32')
-
-
-            self.observation_space = spaces.Box(-np.inf, np.inf, shape = (self.n_observations,), dtype ='float32')
-
+      
 
     def setup_planning_scene(self):
         # add table mesh in scene planning, avoiding to collosion
@@ -157,36 +166,18 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
 
         p = PoseStamped()
         p.header.frame_id = self.aubo_commander.robot.get_planning_frame()
-        p.pose.position.x = 0.75
+        p.pose.position.x = 0.225
         p.pose.position.y = 0.
         p.pose.position.z = 0.386
 
         self.aubo_commander.scene.add_box("table",p,(0.91,0.91,0.77))
 
 
-    def joints_callback(self, data):
-        # get joint_states
-        self.joints = data
 
     def gripper_camera_callback(self, data):
         #get camera raw
         self.grippper_camera_image_raw = data
 
-    def get_joints(self):
-    	return self.joints
-
-
-    def get_ee_pose(self):
-
-        gripper_pose = self.aubo_commander.get_ee_pose()
-        
-        return gripper_pose
-        
-    def get_ee_rpy(self):
-        
-        gripper_rpy = self.aubo_commander.get_ee_rpy()
-        
-        return gripper_rpy
 
     
     def _check_all_systems_ready(self):
@@ -198,21 +189,9 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         return True
 
     def _check_all_sensors_ready(self):
-        self._check_joint_states_ready()
-        self._check_gripper_camera_image_ready()
-        
+        self._check_gripper_camera_image_ready()      
         rospy.logdebug("ALL SENSORS READY")
 
-    def _check_joint_states_ready(self):
-        self.joints = None
-        while self.joints is None and not rospy.is_shutdown():
-            try:
-                self.joints = rospy.wait_for_message("/joint_states", JointState, timeout=1.0)
-                rospy.logdebug("Current /joint_states READY=>" + str(self.joints))
-
-            except:
-                rospy.logerr("Current /joint_states not ready yet, retrying for getting joint_states")
-        return self.joints
 
     def _check_gripper_camera_image_ready(self):
         self.grippper_camera_image_raw = None
@@ -223,7 +202,6 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
 
             except:
                 rospy.logerr("Current /camera/image_raw not ready yet, retrying for getting image_raw")
-        return self.grippper_camera_image_raw
     
 
     def _set_init_pose(self):
@@ -231,12 +209,22 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         Sets the Robot in its init pose
         The Simulation will be unpaused for this purpose.
         """
+        obj_init_pose = Pose()
+        obj_init_pose.position.x = np.random.uniform(-self.target_range,self.target_range)
+        obj_init_pose.position.y = np.random.uniform(-self.target_range,self.target_range)
+        obj_init_pose.position.z = self.initial_object_pos[2]
+        obj_init_pose.orientation.x = 0
+        obj_init_pose.orientation.y = 0
+        obj_init_pose.orientation.z = 0
+        obj_init_pose.orientation.w = 0
+        rospy.loginfo('Reset object position:\n\tx: {}\n\ty:{}\n\tz:{}'.format(obj_init_pose.position.x ,  obj_init_pose.position.y,  obj_init_pose.position.z ))
+        self.gazebo.set_model_state(self.object_name, obj_init_pose)
         self.gazebo.unpauseSim()
-        if self.action_type == "ee_control":
-            assert self._set_action(self.setup_ee_pos), "Initializing failed"
 
-        elif self.action_type == "joints_control":
-            assert self._set_action(self.init_pos), "Initializing failed"
+        self.last_action = np.array(self.initial_gripper_pos, dtype = 'float32')
+        
+        assert self.set_ee_movement(self.last_action.tolist()), "Initializing failed"
+
 
 
     def _init_env_variables(self):
@@ -248,45 +236,44 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         rospy.logdebug("Init Env Variables...END")
         
 
+    def set_ee_movement(self,action):
+        ee_pose = Pose()
+        ee_pose.position.x = action[0]
+        ee_pose.position.y = action[1]
+        ee_pose.position.z = action[2]
+        ee_pose.orientation.y = 1.0
+        ee_pose.orientation.z = 0.0
+        ee_pose.orientation.w = 0.0
+        ee_pose.orientation.x = 0.0
 
-    def _set_action(self, orig_action):
+        ee_value = action[3]
+        assert self.aubo_commander.move_ee_to_pose(ee_pose), 'arm execuation fails'
+        assert self.aubo_commander.execut_ee([ee_value]), 'gripper execuation fails'
+        return self.aubo_commander.move_ee_to_pose(ee_pose) and self.aubo_commander.execut_ee([ee_value])
+
+
+        
+    def _set_action(self, action):
         """Applies the given action to the simulation.
         Args:
-        	actions(list): 7 or 4 action spaces
+        	orig_actions(list): 7 or 4 action spaces
         """
-        # list and clip the action
-        action = np.clip(orig_action ,self.action_space.low, self.action_space.high).tolist()
-    
-        # joint_state control
-        if self.action_type == "joints_control":
-            assert len(action) == 7, "Action spaces should be 7 dimensions"
-            joint_states, ee_value = action[:6], action[7]
+        assert len(action) == 4, "Action should be 4 dimensions"
 
-            # gripper always close
-            if self.gripper_block == True:
-                ee_value = 0.8
 
-            self.movement_succees = self.aubo_commander.move_joints_traj(joint_states) and self.aubo_commander.execut_ee([ee_value])
+
+
+        if isinstance(action,list) : action = np.array(action, dtype = 'float32')
+        new_action = gen_sphere_action(self.last_action, action)
+
+        if self.block_gripper:
+            new_action[3] = 0.8
         
-        # end effector control , and ee always with fixed rpy
-        elif self.action_type == "ee_control":
-            assert len(action) == 4, "Action should be 4 dimensions"
+        self.last_action = new_action
 
-            ee_pose = Pose()
-            ee_pose.position.x = action[0]
-            ee_pose.position.y = action[1]
-            ee_pose.position.z = action[2]
-            ee_pose.orientation.y = 1.0
-            ee_pose.orientation.z = 0.0
-            ee_pose.orientation.w = 0.0
-            ee_pose.orientation.x = 0.0
+        action = new_action.tolist()
 
-            ee_value = action[3]
-
-            if self.gripper_block:
-                ee_value = 0.8
-
-            self.movement_succees = self.aubo_commander.move_ee_to_pose(ee_pose) and self.aubo_commander.execut_ee([ee_value])
+        self.movement_succees = self.set_ee_movement(action)
 
         return self.movement_succees
 
@@ -297,6 +284,7 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         And the speed of cube
         Orientation for the moment is not considered
         """
+        self.gazebo.unpauseSim()
 
         self.listener.waitForTransform("/world","/robotiq_gripper_center", rospy.Time(), rospy.Duration(4.0))
         try:
@@ -309,43 +297,59 @@ class AuboEnv(robot_gazebo_env.RobotGazeboEnv):
         # grip_pose = self.get_ee_pose()
         # ee_array_pose = [grip_pose.position.x, grip_pose.position.y, grip_pose.position.z]
 
-        ee_pos = np.array(trans).reshape(3,)
-        # rotation in quaterion
-        ee_rot = np.array(rot).reshape(4,)
+        grip_pos = np.array(trans).reshape(3,)
 
         if self.has_object:
             # the pose of the cube/box on a table        
             obj_data = self.obj.get_states().copy()
 
             # postion of object
-            obj_pos = obj_data[:3]
+            object_pos = obj_data[:3]
 
             # orientation of object
-            obj_rot = obj_data[3:7]
+            object_rot = obj_data[3:7]
 
             # speed of object
-            obj_vel = obj_data[-3:]
+            object_velp = obj_data[-3:]
 
-            obj_rel_pos = obj_pos - ee_pos
+            object_rel_pos = object_pos - grip_pos
         else:
-            obj_pos = np.zeros(3)
-            obj_rot = np.zeros(4)
-            obj_vel = np.zeros(3)
-            obj_rel_pos = np.zeros(3)
+            object_pos = object_rot = object_velp = object_rel_pos = np.zeros(0)
+
+        if not self.has_object:
+            achieved_goal = grip_pos.copy()
+        else:
+            achieved_goal = np.squeeze(object_pos.copy())
+        obs = np.concatenate([
+            grip_pos, object_pos.ravel(), object_rel_pos.ravel(), object_rot.ravel(),
+            object_velp.ravel()
+        ])
+
+        return {
+            'observation': obs.copy(),
+            'achieved_goal': achieved_goal.copy(),
+            'desired_goal': self.goal.copy(),
+        }
+
+    def _sample_goal(self):
+        if self.has_object:
+            goal = self.initial_object_pos[:3] + self.np_random.uniform(-self.target_range, self.target_range, size=3)
+            goal[2] = self.height_offset
+            if self.target_in_the_air and self.np_random.uniform() < 0.5:
+                goal[2] += self.np_random.uniform(0, 0.35)
+        else:
+            goal = self.initial_gripper_xpos[:3] + self.np_random.uniform(-self.target_range, self.target_range, size=3)
+        return goal.copy()
+
+    def _compute_reward(self, achieved_goal, goal, info):
+        # Compute distance between goal and the achieved goal.
+        d = goal_distance(achieved_goal, goal)
+        if self.reward_type == 'sparse':
+            return -1 if d > self.distance_threshold else 0
+        else:
+            return -d
 
 
-        # observation spaces 20
-        obs = np.concatenate([ee_pos, ee_rot, obj_pos, obj_rot, obj_vel, obj_rel_pos])
- 
-        return  obs
-
-
-    def _compute_reward(self, observations, done):
-        """Calculates the reward to give based on the observations given.
-        """
-        raise NotImplementedError()
-
-    def _is_done(self, observations):
-        """Calculates the reward to give based on the observations given.
-        """
-        raise NotImplementedError()
+    def _is_success(self, achieved_goal, desired_goal):
+        d = goal_distance(achieved_goal, desired_goal)
+        return d < self.distance_threshold

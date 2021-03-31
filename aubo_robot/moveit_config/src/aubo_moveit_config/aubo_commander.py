@@ -128,29 +128,38 @@ class AuboCommander(object):
 
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
     
-    rospy.init_node('move_group_python_interface_tutorial', anonymous=True)
-    traj_serv_object = AuboCommander()
+#     rospy.init_node('move_group_python_interface_tutorial', anonymous=True)
+#     traj_serv_object = AuboCommander()
 
-    print("Initializing the joint states....")
+#     print("Initializing the joint states....")
 
-    pose_goal = geometry_msgs.msg.Pose()
+#     pose_goal = geometry_msgs.msg.Pose()
 
-    pose_goal.position.x = 0.6
-    pose_goal.position.y = -0.3
-    pose_goal.position.z = 0.95
-    pose_goal.orientation.x = 0
-    pose_goal.orientation.y = 1
-    pose_goal.orientation.z = 0
-    pose_goal.orientation.w = 0
+#     pose_goal.position.x = 0.0
+#     pose_goal.position.y = 0
+#     pose_goal.position.z = 0.9
+#     pose_goal.orientation.x = 0
+#     pose_goal.orientation.y = 1
+#     pose_goal.orientation.z = 0
+#     pose_goal.orientation.w = 0
+    
 
+#     p = geometry_msgs.msg.PoseStamped()
+#     p.header.frame_id = traj_serv_object.robot.get_planning_frame()
+#     p.pose.position.x = 0.225
+#     p.pose.position.y = 0.
+#     p.pose.position.z = 0.386
 
+#     traj_serv_object.scene.add_box("table",p,(0.91,0.91,0.77))
 
-    print("if succeed? ", traj_serv_object.move_ee_to_pose(pose_goal))
-    print(traj_serv_object.get_ee_pose())
-    traj_serv_object.execut_ee([0.8])
-    print(traj_serv_object.arm_group.get_end_effector_link())
-    print(traj_serv_object.gripper_group.get_end_effector_link())
+#     input()
+
+#     print("if succeed? ", traj_serv_object.move_ee_to_pose(pose_goal))
+#     print(traj_serv_object.get_ee_pose())
+#     traj_serv_object.execut_ee([0.8])
+#     print(traj_serv_object.arm_group.get_end_effector_link())
+#     print(traj_serv_object.gripper_group.get_end_effector_link())
 
     
