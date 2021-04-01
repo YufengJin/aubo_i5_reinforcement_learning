@@ -18,7 +18,7 @@ from convert_shapes import change_list_to_tf
 
 tf.keras.backend.set_floatx('float64')
 #wandb.init(name='A3C', project="AuboPickAndPlace")
-wandb.init(name='A3C', project="PushCubeSim")
+wandb.init(name='A3C sparse', project="PushCubeSim")
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gamma', type=float, default=0.99)
@@ -210,12 +210,7 @@ class WorkerAgent(Thread):
             while True:
 
                 action = self.actor.get_action(state)
-                #action = np.clip(action, self.action_bound_low, self.action_bound_high)
                 next_state, reward, done, _ = self.env.step(action)
-                # print('position of ee: ', next_state[:3])
-                # print('position of obj: ', next_state[-3:])
-                # print('reward: ', reward)
-                # print()
                 if done:
                     break
                 state = np.reshape(state, [1, self.state_dim])
@@ -240,9 +235,12 @@ class WorkerAgent(Thread):
 
                     actor_loss = self.global_actor.train(
                         states, actions, advantages)
+
+                    
+                    wandb.log({'actor_loss': actor_loss})
                     critic_loss = self.global_critic.train(
                         states, td_targets)
-
+                    wandb.log({'critic_loss': critic_loss})
                     self.actor.model.set_weights(
                         self.global_actor.model.get_weights())
                     self.critic.model.set_weights(

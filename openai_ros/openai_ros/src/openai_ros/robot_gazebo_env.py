@@ -18,10 +18,6 @@ class RobotGazeboEnv(gym.Env):
         self.reset_controls = reset_controls
         self.seed()
 
-        # Set up ROS related variables
-        self.episode_num = 0
-        self.cumulated_episode_reward = 0
-        self.reward_pub = rospy.Publisher('/openai/reward', RLExperimentInfo, queue_size=1)
         rospy.logdebug("END init RobotGazeboEnv")
 
     # Env methods
@@ -48,13 +44,12 @@ class RobotGazeboEnv(gym.Env):
         self._set_action(action)
 
         obs = self._get_obs()
-
+        print('get obs: ', obs)
         self.gazebo.pauseSim()
         done = self._is_done(obs)
 
         info = {}
         reward = self._compute_reward(obs, done)
-        self.cumulated_episode_reward += reward
 
         rospy.logdebug("END STEP OpenAIROS")
 
@@ -64,8 +59,6 @@ class RobotGazeboEnv(gym.Env):
         rospy.logdebug("Reseting RobotGazeboEnvironment")
         self._reset_sim()
         self._init_env_variables()
-        self._update_episode()
-        self.gazebo.unpauseSim()
         obs = self._get_obs()
         self.gazebo.pauseSim()
         rospy.logdebug("END Reseting RobotGazeboEnvironment")
@@ -79,35 +72,6 @@ class RobotGazeboEnv(gym.Env):
         """
         rospy.logdebug("Closing RobotGazeboEnvironment")
         rospy.signal_shutdown("Closing RobotGazeboEnvironment")
-
-    def _update_episode(self):
-        """
-        Publishes the cumulated reward of the episode and 
-        increases the episode number by one.
-        :return:
-        """
-        self._publish_reward_topic(
-                                    self.cumulated_episode_reward,
-                                    self.episode_num
-                                    )
-        self.episode_num += 1
-        self.cumulated_episode_reward = 0
-
-    def _publish_reward_topic(self, reward, episode_number=1):
-        """
-        This function publishes the given reward in the reward topic for
-        easy access from ROS infrastructure.
-        :param reward:
-        :param episode_number:
-        :return:
-        """
-        reward_msg = RLExperimentInfo()
-        reward_msg.episode_number = episode_number
-        reward_msg.episode_reward = reward
-        self.reward_pub.publish(reward_msg)
-
-    # Extension methods
-    # ----------------------------
 
     def _reset_sim(self):
         """Resets a simulation
