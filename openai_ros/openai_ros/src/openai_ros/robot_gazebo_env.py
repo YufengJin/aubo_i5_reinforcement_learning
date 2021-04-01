@@ -44,7 +44,6 @@ class RobotGazeboEnv(gym.Env):
         self._set_action(action)
 
         obs = self._get_obs()
-        print('get obs: ', obs)
         self.gazebo.pauseSim()
         done = self._is_done(obs)
 

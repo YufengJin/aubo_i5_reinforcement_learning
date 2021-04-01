@@ -18,7 +18,7 @@ from convert_shapes import change_list_to_tf
 
 tf.keras.backend.set_floatx('float64')
 #wandb.init(name='A3C', project="AuboPickAndPlace")
-wandb.init(name='A3C sparse', project="PushCubeSim")
+#wandb.init(name='A3C sparse', project="PushCubeSim")
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gamma', type=float, default=0.99)
@@ -211,6 +211,7 @@ class WorkerAgent(Thread):
 
                 action = self.actor.get_action(state)
                 next_state, reward, done, _ = self.env.step(action)
+                print('reward: ', reward)
                 if done:
                     break
                 state = np.reshape(state, [1, self.state_dim])
@@ -227,6 +228,7 @@ class WorkerAgent(Thread):
                     actions = self.list_to_batch(action_batch)
                  
                     rewards = self.list_to_batch(reward_batch)
+                    
 
                     next_v_value = self.critic.model.predict(next_state)
                     td_targets = self.n_step_td_target(
@@ -237,10 +239,10 @@ class WorkerAgent(Thread):
                         states, actions, advantages)
 
                     
-                    wandb.log({'actor_loss': actor_loss})
+                    #wandb.log({'actor_loss': actor_loss})
                     critic_loss = self.global_critic.train(
                         states, td_targets)
-                    wandb.log({'critic_loss': critic_loss})
+                    #wandb.log({'critic_loss': critic_loss})
                     self.actor.model.set_weights(
                         self.global_actor.model.get_weights())
                     self.critic.model.set_weights(
@@ -257,7 +259,7 @@ class WorkerAgent(Thread):
 
             print('EP{} EpisodeReward={}'.format(CUR_EPISODE, episode_reward))
             
-            wandb.log({'Reward': episode_reward})
+            #wandb.log({'Reward': episode_reward})
 
 
             
