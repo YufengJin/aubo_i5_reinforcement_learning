@@ -67,6 +67,7 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
         self.target_in_the_air = target_in_the_air
         self.action_reward = False
         self.action_reward_dense = 0
+        self.action_reward_reduction = 0.1
         self.target_offset = np.array(target_offset, dtype='float32')
 
         if self.has_object:
@@ -217,15 +218,15 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
         #print('action after clip: ', action)
         
         new_action, action_reward = gen_sphere_action(self.last_action, action)
-        print('\n------------------- action test -------------------')
-        print('last action : ', self.last_action)
-        print('action executed: ', new_action)
-        print('------------------- end -------------------\n')
+        # print('\n------------------- action test -------------------')
+        # print('last action : ', self.last_action)
+        # print('action executed: ', new_action)
+        # print('------------------- end -------------------\n')
 
         self.action_reward = action_reward
 
-        #print('action_reward activation : ', self.action_reward)
-        print('action_reward dense value : ', self.action_reward_dense)
+        # print('action_reward activation : ', self.action_reward)
+        # print('action_reward dense value : ', self.action_reward_dense)
         if self.gripper_block:
             new_action[3] = 0.8
         
@@ -244,11 +245,11 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
         Orientation for the moment is not considered
         """
         self.gazebo.unpauseSim()
-        self.listener.waitForTransform("/world","/wrist3_Link", rospy.Time(), rospy.Duration(4.0))
+        self.listener.waitForTransform("/world","/robotiq_gripper_center", rospy.Time(), rospy.Duration(4.0))
         try:
             now = rospy.Time.now()
-            self.listener.waitForTransform("/world","/wrist3_Link", now, rospy.Duration(4.0))
-            (trans, rot) = self.listener.lookupTransform("/world", "/wrist3_Link", now)
+            self.listener.waitForTransform("/world","/robotiq_gripper_center", now, rospy.Duration(4.0))
+            (trans, rot) = self.listener.lookupTransform("/world", "/robotiq_gripper_center", now)
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
             raise e
         
@@ -267,9 +268,9 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
         # observation spaces 6
         obs = np.concatenate([ee_pos, obj_pos])
 
-        print('\n------------------- get obs test -------------------')
-        print('observation : ', obs)
-        print('------------------- end -------------------\n')
+        # print('\n------------------- get obs test -------------------')
+        # print('observation : ', obs)
+        # print('------------------- end -------------------\n')
 
         return  obs
 
@@ -308,12 +309,12 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
         reward = 0
         achieved_goal = obs[-3:]
         d = goal_distance(achieved_goal, self.goal)
-        print('distance cube: ', d)
+        # print('distance cube: ', d)
         if self.reward_type == 'sparse':
             if not self.action_reward: reward += -1     
             if d > self.distance_threshold: reward += -1
         else:
-            reward -= 0.01 * self.action_reward_dense
+            reward -= self.action_reward_reduction * self.action_reward_dense
             reward -= d
         return reward
 
