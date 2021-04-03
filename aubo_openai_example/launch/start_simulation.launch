@@ -3,7 +3,7 @@
 
     <include file="$(find aubo_gazebo)/launch/aubo_simulation.launch"/>
     <include file="$(find aubo_sim_examples)/launch/spawn_block_table.launch">
-    	<arg name="has_object" value="(arg has_object)" />
+    	<arg name="has_object" value="$(arg has_object)" />
     </include>
 </launch>
 

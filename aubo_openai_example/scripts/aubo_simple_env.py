@@ -182,17 +182,17 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
             obj_init_pose.orientation.y = 0
             obj_init_pose.orientation.z = 0
             obj_init_pose.orientation.w = 0
-            print('Reset Object Position:\n\tx: {}\n\ty: {}\n\tz: {}'.format(obj_init_pose.position.x ,  obj_init_pose.position.y,  obj_init_pose.position.z ))
+            print('Reset Object Position:\n\tx: {}\n\ty: {}\n\tz: {}\n'.format(obj_init_pose.position.x ,  obj_init_pose.position.y,  obj_init_pose.position.z ))
             self.gazebo.set_model_state(self.object_name, obj_init_pose)
             #reset goal
             self.goal = self._sample_goal()
-            print('Reset Cube Goal:\n\tx: {}\n\ty:{}\n\tz:{} '.format(self.goal[0], self.goal[1], self.goal[2]))
+            print('Reset Cube Goal:\n\tx: {}\n\ty:{}\n\tz:{}\n '.format(self.goal[0], self.goal[1], self.goal[2]))
             
             self.gazebo.unpauseSim()
         else: 
             self.goal = self._sample_goal()
-            print('Initialized End Effector Postionprint:\n\tx: {}\n\ty: {}\n\tz: {}'.format(self.initial_gripper_pos[0] ,  self.initial_gripper_pos[1],  self.initial_gripper_pos[2]))
-            print('Reset EE Goal:\n\tx: {}\n\ty:{}\n\tz:{} '.format(self.goal[0], self.goal[1], self.goal[2]))
+            print('Initialized End Effector Postionprint:\n\tx: {}\n\ty: {}\n\tz: {}\n'.format(self.initial_gripper_pos[0] ,  self.initial_gripper_pos[1],  self.initial_gripper_pos[2]))
+            print('Reset EE Goal:\n\tx: {}\n\ty:{}\n\tz:{}\n'.format(self.goal[0], self.goal[1], self.goal[2]))
         rospy.logdebug("Init Env Variables...END")
         
 
@@ -285,17 +285,22 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
         if movement planning fail, it done. and the cube reach the desired position it     
         """
 
-        cube_pos = observations[-3:]
+        
+        if self.has_object:
+            cube_pos = observations[-3:]
+            cube_fail = True if cube_pos[2] < 0.7 else False   
+            # Did the movement fail in set action?
+            #mov_fail = not(self.movement_succees)
+            rospy.logdebug("Cube fails: ", str(cube_fail))
 
-        cube_fail = True if cube_pos[2] < 0.7 else False   
-        # Did the movement fail in set action?
-        #mov_fail = not(self.movement_succees)
+            done_success = self._is_success(observations)
+            done = done_success or cube_fail
 
-        done_success = self._is_success(observations)
+        else:
+            done_success = self._is_success(observations)
+            done = done_success
 
-        rospy.logdebug(">>>>>>>>>>>>>>>> Cube fails: "+str(cube_fail)+", Mission completed: "+str(done_success))
-        # If it moved or the arm couldnt reach a position asced for it stops
-        done = done_success or cube_fail
+        if done_success: print("SUCEESS")
 
         return done
 

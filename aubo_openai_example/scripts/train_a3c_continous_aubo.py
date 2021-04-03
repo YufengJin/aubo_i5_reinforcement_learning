@@ -10,15 +10,14 @@ import numpy as np
 from threading import Thread
 from multiprocessing import cpu_count
 import push_cube_sim
-#import aubo_pick_place
-#import aubo_push_cube
+import reach_sim
 import rospy
 
 from convert_shapes import change_list_to_tf
 
 tf.keras.backend.set_floatx('float64')
 #wandb.init(name='A3C', project="AuboPickAndPlace")
-wandb.init(name='A3C sparse reward', project="PushCubeSim")
+wandb.init(name='A3C sparse reward', project="ReachSim")
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gamma', type=float, default=0.99)
@@ -271,10 +270,10 @@ class WorkerAgent(Thread):
 
 def main():
     #rospy.init_node("train_aubo_pick_place")
-    rospy.init_node("train_aubo_push")
+    rospy.init_node("train_aubo_taskEnv")
 
     #env_name = 'AuboPickAndPlace-v0'
-    env_name = 'PushCubeSim-v0'
+    env_name = 'ReachSim-v0'
     agent = Agent(env_name)
     agent.train()
 

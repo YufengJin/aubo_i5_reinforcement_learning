@@ -6,8 +6,9 @@
     <include file="$(find aubo_sim_examples)/launch/spawn_table.launch"/>
 
     <!-- Spawn Block -->
-    <if="(arg has_object)" include file="$(find aubo_sim_examples)/launch/spawn_block.launch"/>
-
+    <group if="$(arg has_object)">
+    <include file="$(find aubo_sim_examples)/launch/spawn_block.launch"/>
+    </group>
 
 
 </launch>
