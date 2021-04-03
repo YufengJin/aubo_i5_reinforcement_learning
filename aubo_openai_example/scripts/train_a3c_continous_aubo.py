@@ -18,7 +18,7 @@ from convert_shapes import change_list_to_tf
 
 tf.keras.backend.set_floatx('float64')
 #wandb.init(name='A3C', project="AuboPickAndPlace")
-wandb.init(name='A3C dense action reward added', project="PushCubeSim")
+wandb.init(name='A3C sparse reward', project="PushCubeSim")
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gamma', type=float, default=0.99)

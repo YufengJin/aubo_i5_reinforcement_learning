@@ -62,10 +62,10 @@ class AuboCommander(object):
             # check the ending point closed to target point within tolerance   
             current_pose = self.arm_group.get_current_pose()
             done = self.check_close(target_pose, current_pose)
-            print('\n-------------------aubo_commander action test-------------------')
-            print('current pose: ', current_pose)
-            print('target pose: ', target_pose)
-            print('------------------- end -------------------\n')
+            # print('\n-------------------aubo_commander action test-------------------')
+            # print('current pose: ', current_pose)
+            # print('target pose: ', target_pose)
+            # print('------------------- end -------------------\n')
         else:
             # false if not execuate
             done = False

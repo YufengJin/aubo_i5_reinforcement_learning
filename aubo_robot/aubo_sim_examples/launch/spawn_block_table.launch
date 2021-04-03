@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <launch>
-
+    <arg name="has_object" default="true" />
     <!-- Spawn Table -->
     <include file="$(find aubo_sim_examples)/launch/spawn_table.launch"/>
 
     <!-- Spawn Block -->
-    <include file="$(find aubo_sim_examples)/launch/spawn_block.launch"/>
+    <if="(arg has_object)" include file="$(find aubo_sim_examples)/launch/spawn_block.launch"/>
 
 
 

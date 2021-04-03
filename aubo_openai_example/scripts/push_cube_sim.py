@@ -24,7 +24,7 @@ class PushCubeSimEnv(aubo_simple_env.AuboSimpleEnv):
         target_offset = [0, -0.2, 0]
 
         aubo_simple_env.AuboSimpleEnv.__init__(self, gripper_block = True, object_name = "block", 
-                                                has_object = True, reward_type = 'dense', initial_gripper_pos = initial_gripper_pos, 
+                                                has_object = True, reward_type = 'sparse', initial_gripper_pos = initial_gripper_pos, 
                                                target_range = 0.1,  target_in_the_air = False, height_offset= 0.7725, distance_threshold = 0.05, target_offset = target_offset)
 
     
