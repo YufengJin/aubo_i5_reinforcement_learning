@@ -1,6 +1,7 @@
 import numpy as np
 import random
 import copy
+import wandb
 from collections import namedtuple, deque
 
 from model import Actor, Critic
@@ -100,6 +101,7 @@ class Agent():
         # Compute critic loss
         Q_expected = self.critic_local(states, actions)
         critic_loss = F.mse_loss(Q_expected, Q_targets)
+        wandb.log({'critic_loss': critic_loss})
         # Minimize the loss
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
@@ -109,6 +111,7 @@ class Agent():
         # Compute actor loss
         actions_pred = self.actor_local(states)
         actor_loss = -self.critic_local(states, actions_pred).mean()
+        wandb.log({'actor_loss': actor_loss})
         # Minimize the loss
         self.actor_optimizer.zero_grad()
         actor_loss.backward()

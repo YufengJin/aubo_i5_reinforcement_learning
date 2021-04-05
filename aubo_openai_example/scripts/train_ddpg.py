@@ -7,20 +7,21 @@ import rospy
 import wandb
 import numpy as np
 from collections import deque
-import push_cube_sim
+# import push_cube_sim
+import reach_sim
 from ddpg_agent import Agent
 
 N_EPISODES = 1000
 PRINT_EVERY = 10
-wandb.init(name='DDPG', project="PushCubeSim")
+wandb.init(name='DDPG', project="ReachSim")
 
 
 
 def main():
     #rospy.init_node("train_aubo_pick_place", log_level=rospy.ERROR)
-    rospy.init_node("train_aubo_push")
+    rospy.init_node("train_aubo")
 
-    env = gym.make('PushCubeSim-v0')
+    env = gym.make('ReachSim-v0')
     env.seed(2)
     state_size = env.observation_space.shape[0]
     action_size = env.action_space.shape[0]
@@ -38,7 +39,7 @@ def main():
         state = env.reset()
         agent.reset()
         score = 0
-        for i in range(30):
+        while True:
             action = agent.act(state)
             next_state, reward, done, _ = env.step(action)
             agent.step(state, action, reward, next_state, done)
