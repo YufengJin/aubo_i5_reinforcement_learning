@@ -1,20 +1,20 @@
 import gym
 import numpy
 import time
-import qlearn
 from gym import wrappers
 # ROS packages required
 import rospy
 import rospkg
 # import our training environment
-import aubo_push_cube
+import reach_sim
+import push_cube_sim
 
 
 if __name__ == '__main__':
 
-    rospy.init_node('aubo_learn_to_push', anonymous=True, log_level=rospy.WARN)
+    rospy.init_node('aubo_learn', anonymous=True, log_level=rospy.WARN)
         # Create the Gym environment
-    env = gym.make('AuboPushCube-v0')
+    env = gym.make('ReachSim-v0')
     rospy.loginfo("Gym environment done")
 
     nepisodes = 1000
@@ -25,8 +25,8 @@ if __name__ == '__main__':
 
     	done = False
     	for i in range(100):
-            print(env.action_space.high)
-            print(env.action_space.low)
+            #print(env.action_space.high)
+            #print(env.action_space.low)
             action = env.action_space.sample()
             print(env.action_space.shape[0])
             observation, reward, done, info = env.step(action)

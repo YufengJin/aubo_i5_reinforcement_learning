@@ -16,8 +16,8 @@ import rospy
 from convert_shapes import change_list_to_tf
 
 tf.keras.backend.set_floatx('float64')
-#wandb.init(name='A3C', project="AuboPickAndPlace")
-wandb.init(name='A3C sparse reward', project="ReachSim")
+
+wandb.init(name='A3C dense reward with full observation', project="PushCubeSim")
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gamma', type=float, default=0.99)
@@ -273,7 +273,7 @@ def main():
     rospy.init_node("train_aubo_taskEnv")
 
     #env_name = 'AuboPickAndPlace-v0'
-    env_name = 'ReachSim-v0'
+    env_name = 'PushCubeSim-v0'
     agent = Agent(env_name)
     agent.train()
 

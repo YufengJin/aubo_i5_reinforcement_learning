@@ -56,6 +56,11 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
         gripper_block(bool) : whether or not gripper execuated
         action_type(string): "joints_control" and "ee_control"
         """
+
+
+        JOINT_STATES_SUBSCRIBER = '/joint_states'
+        GIPPER_IMAGE_SUBSCRIBER = '/camera/image_raw'
+
         self.reward_type = reward_type
         self.gripper_block = gripper_block
         self.has_object = has_object
@@ -68,27 +73,29 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
         self.action_reward = False
         self.action_reward_dense = 0
         self.action_reward_reduction = 0.1
+        self.goal = np.zeros(3)
         self.target_offset = np.array(target_offset, dtype='float32')
+        self.joints = JointState()
+        self.grippper_camera_image_raw = Image()
+
 
         if self.has_object:
             self.obj = Obj_Pos(object_name = object_name)
 
         rospy.logdebug("Start AuboEnv INIT...")
 
-        GIPPER_IMAGE_SUBSCRIBER = '/camera/image_raw'
-
+        self.joint_states_sub = rospy.Subscriber(JOINT_STATES_SUBSCRIBER, JointState, self.joints_callback)
+        self.grippper_camera_image_raw = rospy.Subscriber(GIPPER_IMAGE_SUBSCRIBER, Image, self.gripper_camera_callback)
         self.listener = tf.TransformListener()
 
-        self.grippper_camera_image_raw = rospy.Subscriber(GIPPER_IMAGE_SUBSCRIBER, Image, self.gripper_camera_callback)
-        self.grippper_camera_image_raw = Image()
 
-        self.controllers_list = []
 
         self.aubo_commander = AuboCommander()
-
         self.setup_planning_scene()
-        # It doesnt use namespace
+
+
         self.robot_name_space = ""
+        self.controllers_list = []
 
         # We launch the init function of the Parent Class robot_gazebo_env.RobotGazeboEnv
         super(AuboSimpleEnv, self).__init__(controllers_list=self.controllers_list,
@@ -119,11 +126,26 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
         self.aubo_commander.scene.add_box("table",p,(0.91,0.91,0.77))
 
 
+    def joints_callback(self, data):
+        # get joint_states
+        self.joints = data.position
+
     def gripper_camera_callback(self, data):
         #get camera raw
-        self.grippper_camera_image_raw = data
+        self.grippper_camera_image_raw = data.data
 
 
+    def get_ee_pose(self):
+            
+            self.listener.waitForTransform("/world","/robotiq_gripper_center", rospy.Time(), rospy.Duration(4.0))
+            try:
+                now = rospy.Time.now()
+                self.listener.waitForTransform("/world","/robotiq_gripper_center", now, rospy.Duration(4.0))
+                (trans, rot) = self.listener.lookupTransform("/world", "/robotiq_gripper_center", now)
+            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
+                raise e
+            
+            return np.array(trans).reshape(3,), np.array(rot).reshape(4,)
 
     
     def _check_all_systems_ready(self):
@@ -135,10 +157,21 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
         return True
 
     def _check_all_sensors_ready(self):
-
+        self._check_joint_states_ready()
         self._check_gripper_camera_image_ready()
         
         rospy.logdebug("ALL SENSORS READY")
+
+    def _check_joint_states_ready(self):
+        self.joints = None
+        while self.joints is None and not rospy.is_shutdown():
+            try:
+                self.joints = rospy.wait_for_message("/joint_states", JointState, timeout=1.0)
+                rospy.logdebug("Current /joint_states READY=>" + str(self.joints))
+
+            except:
+                rospy.logerr("Current /joint_states not ready yet, retrying for getting joint_states")
+        return self.joints
 
     def _check_gripper_camera_image_ready(self):
         self.grippper_camera_image_raw = None
@@ -150,7 +183,6 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
             except:
                 rospy.logerr("Current /camera/image_raw not ready yet, retrying for getting image_raw")
         return self.grippper_camera_image_raw
-    
 
     def _set_init_pose(self):
         """
@@ -161,7 +193,7 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
 
         self.last_action = self.initial_gripper_pos
         
-        assert self.set_ee_movement(self.last_action.tolist()), "Initializing failed"
+        assert self.set_ee_movement(self.initial_gripper_pos.tolist()), "Initializing failed"
 
     
 
@@ -224,15 +256,15 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
         #print('action after clip: ', action)
         
         new_action, action_reward = gen_sphere_action(self.last_action, action)
-        # print('\n------------------- action test -------------------')
-        # print('last action : ', self.last_action)
-        # print('action executed: ', new_action)
-        # print('------------------- end -------------------\n')
+        #print('\n------------------- action test -------------------')
+        #print('last action : ', self.last_action)
+        #print('action executed: ', new_action)
+        #print('------------------- end -------------------\n')
 
         self.action_reward = action_reward
 
-        # print('action_reward activation : ', self.action_reward)
-        # print('action_reward dense value : ', self.action_reward_dense)
+        #print('action_reward activation : ', self.action_reward)
+        #print('action_reward dense value : ', self.action_reward_dense)
         if self.gripper_block:
             new_action[3] = 0.8
         
@@ -271,12 +303,14 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
         else:
             obj_pos = np.zeros(3)
 
-        # observation spaces 6
-        obs = np.concatenate([ee_pos, obj_pos])
+        goal = self.goal.copy()
 
-        # print('\n------------------- get obs test -------------------')
-        # print('observation : ', obs)
-        # print('------------------- end -------------------\n')
+        # observation spaces 9
+        obs = np.concatenate([ee_pos, obj_pos, goal])
+
+        #print('\n------------------- get obs test -------------------')
+        #print('observation : ', obs)
+        #print('------------------- end -------------------\n')
 
         return  obs
 
@@ -287,10 +321,9 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
 
         
         if self.has_object:
-            cube_pos = observations[-3:]
+            cube_pos = observations[3:6]
             cube_fail = True if cube_pos[2] < 0.7 else False   
-            # Did the movement fail in set action?
-            #mov_fail = not(self.movement_succees)
+
             rospy.logdebug("Cube fails: ", str(cube_fail))
 
             done_success = self._is_success(observations)
@@ -319,12 +352,12 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
         # Compute distance between goal and the achieved goal.
         reward = 0
         if self.has_object:
-            achieved_goal = obs[-3:]
+            achieved_goal = obs[3:6]
         else:
             achieved_goal = obs[:3]
 
         d = goal_distance(achieved_goal, self.goal)
-        # print('distance cube: ', d)
+        print('distance cube: ', d)
         if self.reward_type == 'sparse':
             if not self.action_reward: reward += -1     
             if d > self.distance_threshold: 
@@ -337,11 +370,11 @@ class AuboSimpleEnv(robot_gazebo_env.RobotGazeboEnv):
         return reward
 
 
-    def _is_success(self, obs):
+    def _is_success(self, observations):
         if self.has_object:
-            achieved_goal = obs[-3:]
+            achieved_goal = observations[3:6]
         else:
-            achieved_goal = obs[:3]
+            achieved_goal = observations[:3]
         desired_goal = self.goal
         d = goal_distance(achieved_goal, desired_goal)
         return d < self.distance_threshold
